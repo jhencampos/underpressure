@@ -354,94 +354,99 @@
     </style>
   </head>
   <body>
-    <!-- Cover Screen (Visible on Load) -->
-    <div class="cover-screen" id="cover-screen">
-      <button class="play-button" id="play-button">Play</button>
-    </div>
+    <div id="xr-ui-container">
+      <!-- Cover Screen (Visible on Load) -->
+      <div class="cover-screen" id="cover-screen">
+        <button class="play-button" id="play-button">Play</button>
+      </div>
 
-    <!-- Loading Screen (Hospital Monitor Style) -->
-    <div class="loading-screen" id="loading-screen">
-      <div class="status-container">
-        <!-- ECG Waveform Container (Added Here) -->
-        <div class="ecg-container" id="ecg-container"></div>
+      <!-- Loading Screen (Hospital Monitor Style) -->
+      <div class="loading-screen" id="loading-screen">
+        <div class="status-container">
+          <!-- ECG Waveform Container (Added Here) -->
+          <div class="ecg-container" id="ecg-container"></div>
 
-        <div class="system-init">SYSTEM INITIATING</div>
-        <div class="message-line">
-          <div
-            class="typed-message"
-            data-text="LOADING ER ENVIRONMENT..."
-            data-delay="1500"
-          >
-            LOADING ER ENVIRONMENT...
+          <div class="system-init">SYSTEM INITIATING</div>
+          <div class="message-line">
+            <div
+              class="typed-message"
+              data-text="LOADING ER ENVIRONMENT..."
+              data-delay="1500"
+            >
+              LOADING ER ENVIRONMENT...
+            </div>
+            <div
+              class="typed-message"
+              data-text="CALIBRATING VITAL SIGN MONITORS..."
+              data-delay="5500"
+            >
+              CALIBRATING VITAL SIGN MONITORS...
+            </div>
+            <div
+              class="typed-message"
+              data-text="SYNCING PATIENT BIOFEEDBACK DATA..."
+              data-delay="10500"
+            >
+              SYNCING PATIENT BIOFEEDBACK DATA...
+            </div>
+            <div
+              class="typed-message"
+              data-text="PREPPING TRAUMA BAY..."
+              data-delay="14500"
+            >
+              PREPPING TRAUMA BAY...
+            </div>
           </div>
-          <div
-            class="typed-message"
-            data-text="CALIBRATING VITAL SIGN MONITORS..."
-            data-delay="5500"
-          >
-            CALIBRATING VITAL SIGN MONITORS...
-          </div>
-          <div
-            class="typed-message"
-            data-text="SYNCING PATIENT BIOFEEDBACK DATA..."
-            data-delay="10500"
-          >
-            SYNCING PATIENT BIOFEEDBACK DATA...
-          </div>
-          <div
-            class="typed-message"
-            data-text="PREPPING TRAUMA BAY..."
-            data-delay="14500"
-          >
-            PREPPING TRAUMA BAY...
+          <div class="final-message" id="final-message">
+            PATIENT ARRIVAL IMMINENT — STANDBY.
           </div>
         </div>
-        <div class="final-message" id="final-message">
-          PATIENT ARRIVAL IMMINENT — STANDBY.
+      </div>
+
+      <!-- Game Content (Hidden Until Load Complete) -->
+      <div id="game-content">
+        <!-- Pulse Monitor UI -->
+        <div class="pulse-monitor">
+          <div class="pulse-label">Patient's Pulse (BPM)</div>
+          <div class="pulse-value pulse-yellow" id="pulseValue">130</div>
+          <!-- Starts yellow (130 BPM = instability) -->
+        </div>
+
+        <!-- Choice Window -->
+        <div class="choice-window" id="choiceWindow">
+          <h3 id="choicePrompt">Patient Assessment</h3>
+          <div class="patient-condition" id="patientCondition">
+            <p><strong>Patient: Jordan R., 28</strong></p>
+            <p><strong>Mechanism of Injury:</strong> Motorcycle crash</p>
+            <p>
+              <strong>Current Status:</strong> Pale, cool, clammy skin | Rigid
+              abdomen on palpation
+            </p>
+            <p>
+              <strong>Vitals:</strong> Pulse
+              <span id="condPulse">130</span> (weak/thready) | BP
+              <span id="condBp">88/60</span> | Respirations
+              <span id="condResp">28</span>/min
+            </p>
+            <p><strong>Complaint:</strong> Severe abdominal pain</p>
+          </div>
+          <div class="choice-options" id="choiceOptions"></div>
+        </div>
+
+        <!-- Feedback Panel (Replaces Alerts) -->
+        <div class="feedback-panel" id="feedbackPanel">
+          <h4 id="feedbackTitle"></h4>
+          <p id="feedbackMessage"></p>
+          <button class="next-button" id="nextButton">Continue</button>
+        </div>
+
+        <!-- Hover Tooltip (Active for First Patient Click) -->
+        <div class="hover-tooltip" id="hoverTooltip">
+          Click to assess patient
         </div>
       </div>
     </div>
-
-    <!-- Game Content (Hidden Until Load Complete) -->
-    <div id="game-content">
-      <!-- Pulse Monitor UI -->
-      <div class="pulse-monitor">
-        <div class="pulse-label">Patient's Pulse (BPM)</div>
-        <div class="pulse-value pulse-yellow" id="pulseValue">130</div>
-        <!-- Starts yellow (130 BPM = instability) -->
-      </div>
-
-      <!-- Choice Window -->
-      <div class="choice-window" id="choiceWindow">
-        <h3 id="choicePrompt">Patient Assessment</h3>
-        <div class="patient-condition" id="patientCondition">
-          <p><strong>Patient: Jordan R., 28</strong></p>
-          <p><strong>Mechanism of Injury:</strong> Motorcycle crash</p>
-          <p>
-            <strong>Current Status:</strong> Pale, cool, clammy skin | Rigid
-            abdomen on palpation
-          </p>
-          <p>
-            <strong>Vitals:</strong> Pulse
-            <span id="condPulse">130</span> (weak/thready) | BP
-            <span id="condBp">88/60</span> | Respirations
-            <span id="condResp">28</span>/min
-          </p>
-          <p><strong>Complaint:</strong> Severe abdominal pain</p>
-        </div>
-        <div class="choice-options" id="choiceOptions"></div>
-      </div>
-
-      <!-- Feedback Panel (Replaces Alerts) -->
-      <div class="feedback-panel" id="feedbackPanel">
-        <h4 id="feedbackTitle"></h4>
-        <p id="feedbackMessage"></p>
-        <button class="next-button" id="nextButton">Continue</button>
-      </div>
-
-      <!-- Hover Tooltip (Active for First Patient Click) -->
-      <div class="hover-tooltip" id="hoverTooltip">Click to assess patient</div>
-    </div>
+    <!-- End xr-ui-container -->
 
     <!-- Audio Elements (Hidden) -->
     <audio
@@ -766,13 +771,12 @@
       let teleportStickEngaged = false;
 
       const TELEPORT_DEADZONE = 0.25;
-      const TELEPORT_ENGAGE_THRESHOLD = 0.70;   // push stick far enough to "aim"
+      const TELEPORT_ENGAGE_THRESHOLD = 0.7; // push stick far enough to "aim"
       const TELEPORT_COOLDOWN_MS = 250;
       let lastTeleportTime = 0;
 
       const _teleportTmpMat = new THREE.Matrix4();
       const _teleportTmpVec = new THREE.Vector3();
-
 
       // VR UI Globals
       let vrMenuGroup;
@@ -1102,11 +1106,10 @@
         return { x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) };
       }
 
-      function recenterXRToFacePatient() {
+      function recenterXRToFacePatient(frame) {
         if (!renderer || !patientModel) return false;
 
         // These are only valid while an XR frame is being produced:
-        const frame = renderer.xr.getFrame?.();
         const refSpace = renderer.xr.getReferenceSpace?.();
         if (!frame || !refSpace) return false;
 
@@ -1193,7 +1196,7 @@
         // VR button (requests DOM overlay so your HTML UI can remain visible in VR on supported browsers)
         const vrBtn = VRButton.createButton(renderer, {
           optionalFeatures: ["local-floor", "dom-overlay"],
-          domOverlay: { root: document.body },
+          domOverlay: { root: document.getElementById("xr-ui-container") },
         });
         vrBtn.style.position = "fixed";
         vrBtn.style.left = "20px";
@@ -1351,7 +1354,10 @@
         // Visible marker (ring) where you’ll land
         teleportMarker = new THREE.Mesh(
           new THREE.RingGeometry(0.15, 0.22, 32),
-          new THREE.MeshBasicMaterial({ color: 0x00ff9d, side: THREE.DoubleSide })
+          new THREE.MeshBasicMaterial({
+            color: 0x00ff9d,
+            side: THREE.DoubleSide,
+          })
         );
         teleportMarker.rotation.x = -Math.PI / 2;
         teleportMarker.visible = false;
@@ -1363,8 +1369,10 @@
         if (!gamepad || !gamepad.axes || gamepad.axes.length === 0) return null;
 
         // Many XR controllers: axes[2],axes[3] are thumbstick; fallback to [0],[1]
-        if (gamepad.axes.length >= 4) return { x: gamepad.axes[2], y: gamepad.axes[3] };
-        if (gamepad.axes.length >= 2) return { x: gamepad.axes[0], y: gamepad.axes[1] };
+        if (gamepad.axes.length >= 4)
+          return { x: gamepad.axes[2], y: gamepad.axes[3] };
+        if (gamepad.axes.length >= 2)
+          return { x: gamepad.axes[0], y: gamepad.axes[1] };
         return null;
       }
 
@@ -1395,7 +1403,9 @@
         if (!session) return;
 
         // Usually left stick = locomotion. If you want right stick, change "left" to "right".
-        const src = getInputSourceByHandedness(session, "left") || session.inputSources.find(s => s?.gamepad);
+        const src =
+          getInputSourceByHandedness(session, "left") ||
+          session.inputSources.find((s) => s?.gamepad);
         if (!src || !src.gamepad) return;
 
         const axes = getThumbstickAxes(src.gamepad);
@@ -1405,7 +1415,7 @@
         const ay = Math.abs(axes.y) < TELEPORT_DEADZONE ? 0 : axes.y;
 
         // Engage when stick pushed strongly in any direction (usually forward is -Y)
-        const engaged = (Math.abs(ax) + Math.abs(ay)) > TELEPORT_ENGAGE_THRESHOLD;
+        const engaged = Math.abs(ax) + Math.abs(ay) > TELEPORT_ENGAGE_THRESHOLD;
 
         // Choose a controller object to cast the ray from:
         // If src is left-handed, use controller1 (index 0) *most of the time*.
@@ -1415,9 +1425,15 @@
 
         if (engaged) {
           // Ray from controller forward
-          _teleportTmpMat.identity().extractRotation(castController.matrixWorld);
-          teleportRaycaster.ray.origin.setFromMatrixPosition(castController.matrixWorld);
-          teleportRaycaster.ray.direction.set(0, 0, -1).applyMatrix4(_teleportTmpMat);
+          _teleportTmpMat
+            .identity()
+            .extractRotation(castController.matrixWorld);
+          teleportRaycaster.ray.origin.setFromMatrixPosition(
+            castController.matrixWorld
+          );
+          teleportRaycaster.ray.direction
+            .set(0, 0, -1)
+            .applyMatrix4(_teleportTmpMat);
 
           const hits = teleportRaycaster.intersectObject(teleportPlane, false);
 
@@ -1425,7 +1441,11 @@
             teleportTarget.copy(hits[0].point);
             teleportHasTarget = true;
 
-            teleportMarker.position.set(teleportTarget.x, teleportPlane.position.y + 0.01, teleportTarget.z);
+            teleportMarker.position.set(
+              teleportTarget.x,
+              teleportPlane.position.y + 0.01,
+              teleportTarget.z
+            );
             teleportMarker.visible = true;
           } else {
             teleportHasTarget = false;
@@ -1464,7 +1484,6 @@
         // keep on floor
         rig.position.y = 0;
       }
-
 
       function buildLaser() {
         const geometry = new THREE.BufferGeometry().setFromPoints([
@@ -2396,7 +2415,7 @@
         endScreen.appendChild(endTitle);
         endScreen.appendChild(endMessage);
         endScreen.appendChild(restartButton);
-        document.body.appendChild(endScreen);
+        document.getElementById("xr-ui-container").appendChild(endScreen);
       }
 
       // Fade to black animation for failure
@@ -2415,14 +2434,14 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
       }
 
-      function renderLoop() {
+      function renderLoop(timestamp, frame) {
         if (renderer.xr.isPresenting) {
           updateTeleportFromThumbstick();
         }
         // Recenter once when entering VR (helps you face the patient)
         if (pendingRecenter && renderer.xr.isPresenting && patientModel) {
           // Try until it succeeds (first frame or two can be missing pose in emulators)
-          if (recenterXRToFacePatient()) pendingRecenter = false;
+          if (recenterXRToFacePatient(frame)) pendingRecenter = false;
         }
 
         if (!renderer.xr.isPresenting) {
