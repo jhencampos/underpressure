@@ -122,11 +122,13 @@
       overflow: hidden;
       border-right: 2px solid #00ff9d; /* Typing cursor */
       opacity: 0;
+      display: inline-block;
+      width: 0ch;
     }
 
     .typed-message.active {
       opacity: 1;
-      animation: typing 1.5s steps(30, end), cursor-blink 0.75s infinite;
+      animation: typing 3.0s steps(var(--chars), end), cursor-blink 0.75s infinite;
     }
 
     .typed-message.hidden {
@@ -154,8 +156,8 @@
     }
 
     @keyframes typing {
-      from { width: 0; }
-      to { width: 100%; }
+      from { width: 0ch; }
+      to { width: calc(var(--chars) * 1ch); }
     }
 
     @keyframes cursor-blink {
@@ -312,9 +314,9 @@
       <div class="system-init">SYSTEM INITIATING</div>
       <div class="message-line">
         <div class="typed-message" data-text="LOADING ER ENVIRONMENT..." data-delay="1500">LOADING ER ENVIRONMENT...</div>
-        <div class="typed-message" data-text="CALIBRATING VITAL SIGN MONITORS..." data-delay="4500">CALIBRATING VITAL SIGN MONITORS...</div>
-        <div class="typed-message" data-text="SYNCING PATIENT BIOFEEDBACK DATA..." data-delay="7500">SYNCING PATIENT BIOFEEDBACK DATA...</div>
-        <div class="typed-message" data-text="PREPPING TRAUMA BAY..." data-delay="10500">PREPPING TRAUMA BAY...</div>
+        <div class="typed-message" data-text="CALIBRATING VITAL SIGN MONITORS..." data-delay="5500">CALIBRATING VITAL SIGN MONITORS...</div>
+        <div class="typed-message" data-text="SYNCING PATIENT BIOFEEDBACK DATA..." data-delay="10500">SYNCING PATIENT BIOFEEDBACK DATA...</div>
+        <div class="typed-message" data-text="PREPPING TRAUMA BAY..." data-delay="14500">PREPPING TRAUMA BAY...</div>
       </div>
       <div class="final-message" id="final-message">PATIENT ARRIVAL IMMINENT — STANDBY.</div>
     </div>
@@ -353,11 +355,11 @@
   </div>
 
   <!-- Audio Elements (Hidden) -->
-  <audio id="erBackground" src="erbackground.mp3" loop preload="auto" volume="0.45"></audio>
-  <audio id="normalBeep" src="heartbeat/normalbeep.mp3" loop preload="auto" volume="0.5"> ></audio>
-  <audio id="fastBeep" src="heartbeat/fastbeep.mp3" loop preload="auto" volume="0.5"> ></audio>
-  <audio id="worseningBeep" src="heartbeat/worseningbeep.mp3" loop preload="auto" volume="0.5"> ></audio>
-  <audio id="flatlineBeep" src="heartbeat/flatlinebeep.mp3" loop preload="auto" volume="0.5"> ></audio>
+  <audio id="erBackground" src="erbackground.mp3" loop preload="auto" audio.volume=0.45></audio>
+  <audio id="normalBeep" src="heartbeat/normalbeep.mp3" loop preload="auto" audio.volume=0.5></audio>
+  <audio id="fastBeep" src="heartbeat/fastbeep.mp3" loop preload="auto" audio.volume=0.5></audio>
+  <audio id="worseningBeep" src="heartbeat/worseningbeep.mp3" loop preload="auto" audio.volume=0.5></audio>
+  <audio id="flatlineBeep" src="heartbeat/flatlinebeep.mp3" loop preload="auto" audio.volume=0.5></audio>
 
   <script type="importmap">
     {
@@ -372,6 +374,8 @@
     import * as THREE from 'three';
     import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
     import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+    import { VRButton } from 'three/addons/webxr/VRButton.js';
+    import { XRControllerModelFactory } from 'three/addons/webxr/XRControllerModelFactory.js';
 
     // ---------------------------
     // AUDIO INIT
@@ -430,6 +434,9 @@
     // ---------------------------
     let ecgScene, ecgCamera, ecgRenderer;
     let ecgLine, ecgGeometry;
+    let rig;
+    let pendingFace = false;
+    let pendingRecenter = false;
     const numPoints = 100;
     const ecgWave = [
       0, 0, 0, 0,
@@ -514,7 +521,29 @@
     const gameContent = document.getElementById('game-content');
 
     // Play Button Click: Trigger Loading Screen + Start ECG
-    playButton.addEventListener('click', () => {
+    playButton.addEventListener('click', async() => {
+      const audios = [
+        audioElements.background,
+        audioElements.normal,
+        audioElements.fast,
+        audioElements.worsening,
+        audioElements.flatline
+      ];
+
+      for (const a of audios) {
+        if (!a) continue;
+        a.muted = false;
+        a.volume = 0.5;        // set volume here (NOT via HTML attribute)
+        a.currentTime = 0;
+        try {
+          await a.play();
+          a.pause();           // unlocks playback; you can play later without being blocked
+          a.currentTime = 0;
+        } catch (e) {
+          console.log("Audio unlock failed:", e);
+        }
+      }
+
       coverScreen.style.display = 'none';
       loadingScreen.classList.add('active');
       initECG(); // Initialize ECG when loading starts
@@ -529,6 +558,11 @@
         const nextMessage = typedMessages[index + 1];
 
         setTimeout(() => {
+          const txt = message.dataset.text || message.textContent;
+          message.textContent = txt;
+          message.style.setProperty('--chars', txt.length);
+          message.style.width = '0ch';
+          message.classList.remove('hidden');
           message.classList.add('active');
           
           setTimeout(() => {
@@ -553,16 +587,25 @@
                     });
                     initGame();
                   }, 500);
-                }, 1500);
+                }, 3000);
               }, 500);
             }
-          }, 2500);
+          }, 4500);
         }, delay);
       });
     }
 
     // Game Variables (Updated with Strict Pulse Bounds)
     let scene, camera, renderer, controls, raycaster, mouse;
+
+let savedCamPos = new THREE.Vector3();
+let savedCamQuat = new THREE.Quaternion();
+let savedControlsTarget = new THREE.Vector3();
+    // VR controller stuff
+    const tempMatrix = new THREE.Matrix4();
+    let controller1, controller2, controllerGrip1, controllerGrip2;
+    const xrControllerModelFactory = new XRControllerModelFactory();
+
     let erRoom, patientModel;
     let ambientLight, directionalLight, emergencyLights;
     let vitals = { 
@@ -582,7 +625,12 @@
       vitalDropInterval: 5000,
       ivPenaltyActive: false, // For scenario 5 penalty (faster pulse drop for 2 questions)
       penaltyQuestionCount: 0, // Track questions remaining for IV penalty
-      firstQuestionTriggered: false // Track if first question was activated by patient click
+      firstQuestionTriggered: false, // Track if first question was activated by patient click
+      isZooming: false,
+
+      // Camera poses (used for desktop + VR session reset)
+      originalCameraPos: new THREE.Vector3(0, 2, -2),
+      targetCameraPos: new THREE.Vector3(0.5, 1.2, 0.8)
     };
 
     // DOM Elements (Updated with Feedback Panel)
@@ -741,21 +789,156 @@
     function initGame() {
       initBoilerplate();
       loadAssets();
-      animate();
+      renderer.setAnimationLoop(renderLoop);
       // Start initial beat sound (matches initial yellow pulse)
       playBeatSoundByColor('pulse-yellow');
+    }
+
+    function yawFromQuaternion(q) {
+      // yaw (rotation around Y axis) from quaternion
+      const t3 = 2 * (q.w * q.y + q.z * q.x);
+      const t4 = 1 - 2 * (q.y * q.y + q.z * q.z);
+      return Math.atan2(t3, t4);
+    }
+
+    function quatFromYaw(yaw) {
+      const half = yaw * 0.5;
+      return { x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) };
+    }
+
+    function recenterXRToFacePatient() {
+      if (!renderer || !patientModel) return false;
+
+      // These are only valid while an XR frame is being produced:
+      const frame = renderer.xr.getFrame?.();
+      const refSpace = renderer.xr.getReferenceSpace?.();
+      if (!frame || !refSpace) return false;
+
+      const pose = frame.getViewerPose(refSpace);
+      if (!pose) return false;
+
+      // Viewer (headset) position + orientation in the current reference space
+      const p = pose.transform.position;
+      const o = pose.transform.orientation;
+      const headsetYaw = yawFromQuaternion(o);
+
+      // Patient world position
+      const patientPos = new THREE.Vector3();
+      patientModel.getWorldPosition(patientPos);
+
+      // Desired yaw from viewer -> patient
+      const dx = patientPos.x - p.x;
+      const dz = patientPos.z - p.z;
+      const desiredYaw = Math.atan2(dx, dz);
+
+      const yawTune = Math.PI/2;
+
+      // Offset needed to rotate "world" so viewer forward points at patient
+      const correction = (desiredYaw - headsetYaw) + yawTune;
+
+      const offsetRefSpace = refSpace.getOffsetReferenceSpace(
+        new XRRigidTransform({ x: 0, y: 0, z: 0 }, quatFromYaw(correction))
+      );
+
+      renderer.xr.setReferenceSpace(offsetRefSpace);
+      return true;
+    }
+
+
+    function faceRigToPatient() {
+      if (!rig || !patientModel || !renderer || !camera) return;
+
+      // rig world position
+      const rigPos = new THREE.Vector3();
+      rig.getWorldPosition(rigPos);
+
+      // patient world position
+      const target = new THREE.Vector3();
+      patientModel.getWorldPosition(target);
+
+      // desired yaw to face patient
+      const dir = target.sub(rigPos);
+      const desiredYaw = Math.atan2(dir.x, dir.z);
+
+      // current headset yaw
+      const xrCam = renderer.xr.getCamera(camera);
+      const headsetYaw = yawFromQuaternion(xrCam.quaternion);
+
+      // rotate rig so headset forward points at patient
+      rig.rotation.y = desiredYaw - headsetYaw;
     }
 
     // Game Setup (Updated with Patient Click Trigger)
     function initBoilerplate() {
       scene = new THREE.Scene();
-      camera = new THREE.PerspectiveCamera(70, window.innerWidth/window.innerHeight, 0.1, 10000);
-      camera.position.set(0, 2, -2); // Original camera position (not zoomed)
+
+      // XR rig so we can reset/offset VR sessions cleanly
+      rig = new THREE.Group();
+      scene.add(rig);
+
+      camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 10000);
+      camera.position.copy(gameState.originalCameraPos);
+      rig.add(camera);
 
       renderer = new THREE.WebGLRenderer({ antialias: true });
       renderer.setSize(window.innerWidth, window.innerHeight);
       renderer.setPixelRatio(window.devicePixelRatio);
+
+      // WebXR ON
+      renderer.xr.enabled = true;
+      renderer.xr.setReferenceSpaceType('local-floor');
+
       document.body.appendChild(renderer.domElement);
+
+      // VR button (requests DOM overlay so your HTML UI can remain visible in VR on supported browsers)
+      const vrBtn = VRButton.createButton(renderer, {
+        optionalFeatures: ['local-floor', 'dom-overlay'],
+        domOverlay: { root: document.body }
+      });
+      vrBtn.style.position = 'fixed';
+      vrBtn.style.left = '20px';
+      vrBtn.style.bottom = '20px';
+      vrBtn.style.zIndex = '100000';
+      document.body.appendChild(vrBtn);
+
+      renderer.xr.addEventListener('sessionstart', () => {
+        pendingRecenter = true;
+        
+
+  // Save desktop view so we can restore after VR
+  savedCamPos.copy(camera.position);
+  savedCamQuat.copy(camera.quaternion);
+  if (controls) savedControlsTarget.copy(controls.target);
+controls.enabled = false; // OrbitControls is desktop-only
+      });
+
+      renderer.xr.addEventListener('sessionend', () => {
+  pendingRecenter = false;
+
+  // Defer restore to next frame; three.js can overwrite pose during XR teardown
+  requestAnimationFrame(() => {
+    // Reset rig (VR offsets live here)
+    rig.position.set(0, 0, 0);
+    rig.rotation.set(0, 0, 0);
+
+    // Restore the exact desktop camera pose from before VR
+    camera.position.copy(savedCamPos);
+    camera.quaternion.copy(savedCamQuat);
+    camera.updateMatrixWorld(true);
+
+    // Restore OrbitControls target + re-sync
+    if (controls) {
+      controls.enabled = true;
+      controls.target.copy(savedControlsTarget);
+      controls.update();
+    }
+
+    gameState.isZooming = false;
+
+    // Restore default reference space type
+    renderer.xr.setReferenceSpaceType('local-floor');
+  });
+});
 
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
@@ -767,13 +950,18 @@
 
       raycaster = new THREE.Raycaster();
       mouse = new THREE.Vector2();
+
+      // Desktop mouse hover + click (VR uses controller trigger)
       window.addEventListener('mousemove', (e) => {
         mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
         mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
         hoverTooltip.style.left = `${e.clientX + 10}px`;
         hoverTooltip.style.top = `${e.clientY - 20}px`;
       });
-      window.addEventListener('click', handleMouseClick);
+      window.addEventListener('click', () => {
+        if (renderer.xr.isPresenting) return;
+        handleMouseClick();
+      });
 
       // Lighting
       ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
@@ -783,13 +971,16 @@
       emergencyLights.position.set(2, 3, 2);
       scene.add(ambientLight, directionalLight, emergencyLights);
 
+      // VR controllers (laser + trigger select)
+      setupVRControllers();
+
       window.addEventListener('resize', onWindowResize);
 
       // Next Button Click: Progress to Next Scenario (Automatic after first question)
       nextButton.addEventListener('click', () => {
         feedbackPanel.style.display = 'none';
         gameState.currentScenario++;
-        
+
         // Check if all scenarios are completed
         if (gameState.currentScenario > scenarios.length) {
           endSimulation(true);
@@ -800,6 +991,74 @@
         showScenario(gameState.currentScenario - 1);
       });
     }
+
+    function setupVRControllers() {
+      controller1 = renderer.xr.getController(0);
+      controller2 = renderer.xr.getController(1);
+
+      controller1.addEventListener('selectstart', () => tryActivatePatientFromController(controller1));
+      controller2.addEventListener('selectstart', () => tryActivatePatientFromController(controller2));
+
+      controller1.add(buildLaser());
+      controller2.add(buildLaser());
+
+      scene.add(controller1);
+      scene.add(controller2);
+
+      controllerGrip1 = renderer.xr.getControllerGrip(0);
+      controllerGrip2 = renderer.xr.getControllerGrip(1);
+      controllerGrip1.add(xrControllerModelFactory.createControllerModel(controllerGrip1));
+      controllerGrip2.add(xrControllerModelFactory.createControllerModel(controllerGrip2));
+      scene.add(controllerGrip1);
+      scene.add(controllerGrip2);
+    }
+
+    function buildLaser() {
+      const geometry = new THREE.BufferGeometry().setFromPoints([
+        new THREE.Vector3(0, 0, 0),
+        new THREE.Vector3(0, 0, -1)
+      ]);
+      const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+      const line = new THREE.Line(geometry, material);
+      line.name = 'laser';
+      line.scale.z = 5;
+      return line;
+    }
+
+    function updateLaserAndTryHit(controller) {
+      if (!patientModel) return;
+
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+      const intersects = raycaster.intersectObject(patientModel, true);
+
+      // shorten laser to hit point (nice feedback)
+      const laser = controller.getObjectByName('laser');
+      if (laser) laser.scale.z = intersects.length ? intersects[0].distance : 5;
+    }
+
+    function tryActivatePatientFromController(controller) {
+      if (!patientModel || gameState.firstQuestionTriggered || gameState.isZooming) return;
+
+      // Cast from controller forward
+      tempMatrix.identity().extractRotation(controller.matrixWorld);
+      raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
+      raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
+
+      const intersects = raycaster.intersectObject(patientModel, true);
+      if (intersects.length === 0) return;
+
+      gameState.firstQuestionTriggered = true;
+      hoverTooltip.style.display = 'none';
+
+      // Optional: small camera offset (same as desktop zoom). In VR it’s a subtle “lean-in”.
+      zoomToPatient(() => {
+        showScenario(0);
+      });
+    }
+
 
     // Load 3D Assets
     function loadAssets() {
@@ -856,6 +1115,12 @@
 
     // Check for Patient Hover (Show Tooltip Before First Click)
     function checkPatientHover() {
+      // Only show tooltip on desktop (VR users use laser)
+      if (renderer && renderer.xr && renderer.xr.isPresenting) {
+        hoverTooltip.style.display = 'none';
+        return;
+      }
+
       if (!patientModel || gameState.firstQuestionTriggered || gameState.isZooming || choiceWindow.style.display === 'block') {
         hoverTooltip.style.display = 'none';
         return;
@@ -884,7 +1149,7 @@
           requestAnimationFrame(animateZoom);
         } else {
           gameState.isZooming = false;
-          controls.enabled = true;
+          controls.enabled = !(renderer && renderer.xr && renderer.xr.isPresenting);
           if (callback) callback();
         }
       }
@@ -1142,14 +1407,31 @@
       renderer.setSize(window.innerWidth, window.innerHeight);
     }
 
-    function animate() {
-      requestAnimationFrame(animate);
-      controls.update();
-      emergencyLights.intensity = 0.3 + Math.sin(Date.now()*0.001)*0.1;
+    function renderLoop() {
+      // Recenter once when entering VR (helps you face the patient)
+      if (pendingRecenter && renderer.xr.isPresenting && patientModel) {
+        // Try until it succeeds (first frame or two can be missing pose in emulators)
+        if (recenterXRToFacePatient()) pendingRecenter = false;
+      }
+
+if (!renderer.xr.isPresenting) {
+        controls.update();
+      }
+
+      emergencyLights.intensity = 0.3 + Math.sin(Date.now() * 0.001) * 0.1;
+
+      // Keep vitals + hover logic identical to UnderPressure
       updateVitals();
       checkPatientHover();
+
+      // VR laser feedback (only before the first interaction)
+      if (renderer.xr.isPresenting && !gameState.firstQuestionTriggered) {
+        if (controller1) updateLaserAndTryHit(controller1);
+        if (controller2) updateLaserAndTryHit(controller2);
+      }
+
       renderer.render(scene, camera);
     }
-  </script>
+</script>
 </body>
 </html>
