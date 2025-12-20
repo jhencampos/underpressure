@@ -4,18 +4,19 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>ER Simulation: Nursing Cave 3D</title>
+
     <style>
       * {
         margin: 0;
         padding: 0;
         box-sizing: border-box;
       }
+
       body {
         overflow: hidden;
         background-color: #000;
       }
 
-      /* Cover Screen with Background Image */
       .cover-screen {
         position: fixed;
         top: 0;
@@ -33,7 +34,6 @@
         z-index: 9999;
       }
 
-      /* Simple Play Button */
       .play-button {
         padding: 1rem 3rem;
         font-size: 2rem;
@@ -65,8 +65,8 @@
         width: 100vw;
         height: 100vh;
         background-color: #000;
-        color: #00ff9d; /* Medical green text */
-        font-family: "Courier New", monospace; /* Monitor-style font */
+        color: #00ff9d;
+        font-family: "Courier New", monospace;
         display: flex;
         flex-direction: column;
         justify-content: center;
@@ -82,7 +82,6 @@
         pointer-events: all;
       }
 
-      /* Status Messages (Single Line, Typed Effect) */
       .status-container {
         width: 80%;
         max-width: 600px;
@@ -90,24 +89,23 @@
         border: 1px solid rgba(0, 255, 157, 0.3);
         padding: 2rem;
         border-radius: 5px;
-        position: relative; /* Parent container for ECG */
+        position: relative;
       }
 
-      /* ECG Waveform Container (On Top of Messages) */
       .ecg-container {
         position: absolute;
-        top: 5px; /* Moved UP to sit above SYSTEM INITIATING message */
+        top: 5px; 
         left: 50%;
         transform: translateX(-50%);
-        width: 200px; /* Match ECG's x-range (-2.5 to 2.5 = 5 units → scaled to 200px) */
-        height: 50px; /* Vertical space for waveform */
-        z-index: 20; /* Higher z-index to ensure it’s above text */
-        pointer-events: none; /* Allow clicks through to loading screen if needed */
+        width: 200px; 
+        height: 50px; 
+        z-index: 20; 
+        pointer-events: none; 
       }
 
       .system-init {
         font-size: 1.2rem;
-        margin-top: 2rem; /* Add top margin to push text down from ECG */
+        margin-top: 2rem;
         margin-bottom: 2rem;
         opacity: 0;
         animation: fade-in 1s forwards;
@@ -115,7 +113,7 @@
 
       .message-line {
         font-size: 1.1rem;
-        height: 1.5rem; /* Fixed height to prevent layout shift */
+        height: 1.5rem;
         overflow: hidden;
         position: relative;
       }
@@ -127,7 +125,7 @@
         transform: translateX(-50%);
         white-space: nowrap;
         overflow: hidden;
-        border-right: 2px solid #00ff9d; /* Typing cursor */
+        border-right: 2px solid #00ff9d;
         opacity: 0;
         display: inline-block;
         width: 0ch;
@@ -147,7 +145,7 @@
       .final-message {
         font-size: 1.3rem;
         font-weight: bold;
-        color: #ff4444; /* Emergency red for final alert */
+        color: #ff4444;
         margin-top: 2rem;
         opacity: 0;
         white-space: nowrap;
@@ -157,7 +155,179 @@
         animation: fade-in 1s forwards, pulse 1s infinite alternate;
       }
 
-      /* Animations */
+      /* Game Content */
+      #game-content {
+        display: none;
+      }
+
+      canvas {
+        display: block;
+        width: 100vw;
+        height: 100vh;
+        cursor: crosshair;
+      }
+
+      .choice-window {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.9);
+        color: white;
+        padding: 2rem;
+        border-radius: 10px;
+        font-family: Arial, sans-serif;
+        z-index: 1000;
+        max-width: 600px;
+        display: none;
+      }
+
+      .choice-window h3 {
+        margin-top: 0;
+        color: #ff4444;
+      }
+
+      .choice-window .patient-condition {
+        background: rgba(255, 255, 255, 0.1);
+        padding: 1rem;
+        border-radius: 5px;
+        margin-bottom: 1.5rem;
+        border-left: 3px solid #ff4444;
+      }
+
+      .choice-option {
+        padding: 1rem;
+        margin: 0.5rem 0;
+        background: rgba(255, 255, 255, 0.1);
+        border: 1px solid #ff4444;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .choice-option:hover {
+        background: rgba(255, 68, 68, 0.3);
+      }
+
+      .hover-tooltip {
+        position: absolute;
+        background: rgba(0, 0, 0, 0.8);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 4px;
+        font-family: Arial, sans-serif;
+        font-size: 0.9rem;
+        pointer-events: none;
+        z-index: 999;
+        display: none;
+      }
+
+      .pulse-monitor {
+        position: absolute;
+        top: 0px;
+        right: 20px;
+        background: rgba(0, 0, 0, 0.85);
+        border: 2px solid #ff4444;
+        border-radius: 10px;
+        padding: 0.5rem;
+        font-family: "Courier New", monospace;
+        color: white;
+        z-index: 900;
+        min-width: 135px;
+        text-align: center;
+      }
+
+      .pulse-value {
+        font-size: 2.5rem;
+        font-weight: bold;
+        margin: 10px 0;
+        animation: pulse-flash 1s infinite;
+      }
+
+      .pulse-green {
+        color: #00ff9d;
+      } /* Stable: 100-120 BPM */
+
+      .pulse-yellow {
+        color: #ffff00;
+      } /* Instable: 120-140 BPM or rapidly falling */
+
+      .pulse-red {
+        color: #ff4444;
+      } /* Critical: <80 BPM and dropping */
+
+      .pulse-label {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+      }
+
+      .feedback-panel {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: rgba(0, 0, 0, 0.95);
+        color: white;
+        padding: 1.5rem 2rem;
+        border-radius: 10px;
+        font-family: Arial, sans-serif;
+        z-index: 1001;
+        max-width: 500px;
+        text-align: center;
+        display: none;
+        border: 2px solid;
+      }
+      
+      .feedback-correct {
+        border-color: #00ff9d;
+      }
+
+      .feedback-incorrect {
+        border-color: #ff4444;
+      }
+
+      .feedback-panel h4 {
+        margin-top: 0;
+        margin-bottom: 1rem;
+      }
+
+      .feedback-panel p {
+        margin-bottom: 1.5rem;
+        line-height: 1.5;
+      }
+
+      .next-button {
+        padding: 0.75rem 2rem;
+        font-size: 1rem;
+        font-weight: bold;
+        color: white;
+        background-color: #ff4444;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+      
+      .next-button:hover {
+        background-color: #ff2222;
+      }
+
+      @keyframes pulse-flash {
+        0% {
+          opacity: 0.4;
+          transform: scale(0.95);
+        }
+        50% {
+          opacity: 1;
+          transform: scale(1.05);
+        }
+        100% {
+          opacity: 0.4;
+          transform: scale(0.95);
+        }
+      }
+      
       @keyframes fade-in {
         from {
           opacity: 0;
@@ -195,258 +365,105 @@
         }
       }
 
-      /* Game Content (Hidden Initially) */
-      #game-content {
-        display: none;
-      }
-
-      /* Existing Game Styles (Preserved) */
-      canvas {
-        display: block;
-        width: 100vw;
-        height: 100vh;
-        cursor: crosshair;
-      }
-      .choice-window {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.9);
-        color: white;
-        padding: 2rem;
-        border-radius: 10px;
-        font-family: Arial, sans-serif;
-        z-index: 1000;
-        max-width: 600px;
-        display: none;
-      }
-      .choice-window h3 {
-        margin-top: 0;
-        color: #ff4444;
-      }
-      .choice-window .patient-condition {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 1rem;
-        border-radius: 5px;
-        margin-bottom: 1.5rem;
-        border-left: 3px solid #ff4444;
-      }
-      .choice-option {
-        padding: 1rem;
-        margin: 0.5rem 0;
-        background: rgba(255, 255, 255, 0.1);
-        border: 1px solid #ff4444;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      .choice-option:hover {
-        background: rgba(255, 68, 68, 0.3);
-      }
-      .hover-tooltip {
-        position: absolute;
-        background: rgba(0, 0, 0, 0.8);
-        color: white;
-        padding: 0.5rem 1rem;
-        border-radius: 4px;
-        font-family: Arial, sans-serif;
-        font-size: 0.9rem;
-        pointer-events: none;
-        z-index: 999;
-        display: none;
-      }
-      .pulse-monitor {
-        position: absolute;
-        top: 0px;
-        right: 20px;
-        background: rgba(0, 0, 0, 0.85);
-        border: 2px solid #ff4444;
-        border-radius: 10px;
-        padding: 0.5rem;
-        font-family: "Courier New", monospace;
-        color: white;
-        z-index: 900;
-        min-width: 135px;
-        text-align: center;
-      }
-      .pulse-value {
-        font-size: 2.5rem;
-        font-weight: bold;
-        margin: 10px 0;
-        animation: pulse-flash 1s infinite;
-      }
-      /* Pulse Color Classes */
-      .pulse-green {
-        color: #00ff9d;
-      } /* Stable: 100-120 BPM */
-      .pulse-yellow {
-        color: #ffff00;
-      } /* Instability: 120-140 BPM or rapidly falling */
-      .pulse-red {
-        color: #ff4444;
-      } /* Critical: <80 BPM and dropping */
-      .pulse-label {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 2px;
-      }
-      @keyframes pulse-flash {
-        0% {
-          opacity: 0.4;
-          transform: scale(0.95);
-        }
-        50% {
-          opacity: 1;
-          transform: scale(1.05);
-        }
-        100% {
-          opacity: 0.4;
-          transform: scale(0.95);
-        }
-      }
-
-      /* Feedback Panel (Replaces Alerts) */
-      .feedback-panel {
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background: rgba(0, 0, 0, 0.95);
-        color: white;
-        padding: 1.5rem 2rem;
-        border-radius: 10px;
-        font-family: Arial, sans-serif;
-        z-index: 1001;
-        max-width: 500px;
-        text-align: center;
-        display: none;
-        border: 2px solid;
-      }
-      .feedback-correct {
-        border-color: #00ff9d;
-      }
-      .feedback-incorrect {
-        border-color: #ff4444;
-      }
-      .feedback-panel h4 {
-        margin-top: 0;
-        margin-bottom: 1rem;
-      }
-      .feedback-panel p {
-        margin-bottom: 1.5rem;
-        line-height: 1.5;
-      }
-      .next-button {
-        padding: 0.75rem 2rem;
-        font-size: 1rem;
-        font-weight: bold;
-        color: white;
-        background-color: #ff4444;
-        border: none;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      .next-button:hover {
-        background-color: #ff2222;
-      }
     </style>
   </head>
+
   <body>
-    <div id="xr-ui-container">
-      <!-- Cover Screen (Visible on Load) -->
-      <div class="cover-screen" id="cover-screen">
-        <button class="play-button" id="play-button">Play</button>
-      </div>
+    <!-- Cover Screen (Visible on Load) -->
+    <div class="cover-screen" id="cover-screen">
+      <button class="play-button" id="play-button">Play</button>
+    </div>
 
-      <!-- Loading Screen (Hospital Monitor Style) -->
-      <div class="loading-screen" id="loading-screen">
-        <div class="status-container">
-          <!-- ECG Waveform Container (Added Here) -->
-          <div class="ecg-container" id="ecg-container"></div>
+    <!-- Loading Screen (Hospital Monitor Style) -->
+    <div class="loading-screen" id="loading-screen">
+      <div class="status-container">
+        <div class="ecg-container" id="ecg-container"></div>
 
-          <div class="system-init">SYSTEM INITIATING</div>
-          <div class="message-line">
-            <div
-              class="typed-message"
-              data-text="LOADING ER ENVIRONMENT..."
-              data-delay="1500"
-            >
-              LOADING ER ENVIRONMENT...
-            </div>
-            <div
-              class="typed-message"
-              data-text="CALIBRATING VITAL SIGN MONITORS..."
-              data-delay="5500"
-            >
-              CALIBRATING VITAL SIGN MONITORS...
-            </div>
-            <div
-              class="typed-message"
-              data-text="SYNCING PATIENT BIOFEEDBACK DATA..."
-              data-delay="10500"
-            >
-              SYNCING PATIENT BIOFEEDBACK DATA...
-            </div>
-            <div
-              class="typed-message"
-              data-text="PREPPING TRAUMA BAY..."
-              data-delay="14500"
-            >
-              PREPPING TRAUMA BAY...
-            </div>
+        <div class="system-init">SYSTEM INITIATING</div>
+        
+        <div class="message-line">
+          <div
+            class="typed-message"
+            data-text="LOADING ER ENVIRONMENT..."
+            data-delay="1500"
+          >
+            LOADING ER ENVIRONMENT...
           </div>
-          <div class="final-message" id="final-message">
-            PATIENT ARRIVAL IMMINENT — STANDBY.
+
+          <div
+            class="typed-message"
+            data-text="CALIBRATING VITAL SIGN MONITORS..."
+            data-delay="5500"
+          >
+            CALIBRATING VITAL SIGN MONITORS...
           </div>
-        </div>
-      </div>
 
-      <!-- Game Content (Hidden Until Load Complete) -->
-      <div id="game-content">
-        <!-- Pulse Monitor UI -->
-        <div class="pulse-monitor">
-          <div class="pulse-label">Patient's Pulse (BPM)</div>
-          <div class="pulse-value pulse-yellow" id="pulseValue">130</div>
-          <!-- Starts yellow (130 BPM = instability) -->
-        </div>
-
-        <!-- Choice Window -->
-        <div class="choice-window" id="choiceWindow">
-          <h3 id="choicePrompt">Patient Assessment</h3>
-          <div class="patient-condition" id="patientCondition">
-            <p><strong>Patient: Jordan R., 28</strong></p>
-            <p><strong>Mechanism of Injury:</strong> Motorcycle crash</p>
-            <p>
-              <strong>Current Status:</strong> Pale, cool, clammy skin | Rigid
-              abdomen on palpation
-            </p>
-            <p>
-              <strong>Vitals:</strong> Pulse
-              <span id="condPulse">130</span> (weak/thready) | BP
-              <span id="condBp">88/60</span> | Respirations
-              <span id="condResp">28</span>/min
-            </p>
-            <p><strong>Complaint:</strong> Severe abdominal pain</p>
+          <div
+            class="typed-message"
+            data-text="SYNCING PATIENT BIOFEEDBACK DATA..."
+            data-delay="10500"
+          >
+            SYNCING PATIENT BIOFEEDBACK DATA...
           </div>
-          <div class="choice-options" id="choiceOptions"></div>
+
+          <div
+            class="typed-message"
+            data-text="PREPPING TRAUMA BAY..."
+            data-delay="14500"
+          >
+            PREPPING TRAUMA BAY...
+          </div>
+
+        </div>
+        <div class="final-message" id="final-message">
+          PATIENT ARRIVAL IMMINENT — STANDBY.
         </div>
 
-        <!-- Feedback Panel (Replaces Alerts) -->
-        <div class="feedback-panel" id="feedbackPanel">
-          <h4 id="feedbackTitle"></h4>
-          <p id="feedbackMessage"></p>
-          <button class="next-button" id="nextButton">Continue</button>
-        </div>
-
-        <!-- Hover Tooltip (Active for First Patient Click) -->
-        <div class="hover-tooltip" id="hoverTooltip">
-          Click to assess patient
-        </div>
       </div>
     </div>
-    <!-- End xr-ui-container -->
+
+    <!-- Game Content (Hidden Until Load Complete) -->
+    <div id="game-content">
+
+      <!-- Pulse Monitor UI -->
+      <div class="pulse-monitor">
+        <div class="pulse-label">Patient's Pulse (BPM)</div>
+        <div class="pulse-value pulse-yellow" id="pulseValue">130</div>
+      </div>
+
+      <!-- Choice Window -->
+      <div class="choice-window" id="choiceWindow">
+        <h3 id="choicePrompt">Patient Assessment</h3>
+
+        <div class="patient-condition" id="patientCondition">
+          <p><strong>Patient: Jordan R., 28</strong></p>
+          <p><strong>Mechanism of Injury:</strong> Motorcycle crash</p>
+          <p>
+            <strong>Current Status:</strong> Pale, cool, clammy skin | Rigid
+            abdomen on palpation
+          </p>
+          <p>
+            <strong>Vitals:</strong> Pulse
+            <span id="condPulse">130</span> (weak/thready) | BP
+            <span id="condBp">88/60</span> | Respirations
+            <span id="condResp">28</span>/min
+          </p>
+          <p><strong>Complaint:</strong> Severe abdominal pain</p>
+        </div>
+        <div class="choice-options" id="choiceOptions"></div>
+      </div>
+
+      <!-- Feedback Panel -->
+      <div class="feedback-panel" id="feedbackPanel">
+        <h4 id="feedbackTitle"></h4>
+        <p id="feedbackMessage"></p>
+        <button class="next-button" id="nextButton">Continue</button>
+      </div>
+
+      <!-- Hover Tooltip -->
+      <div class="hover-tooltip" id="hoverTooltip">Click to assess patient</div>
+
+    </div>
 
     <!-- Audio Elements (Hidden) -->
     <audio
@@ -454,35 +471,34 @@
       src="erbackground.mp3"
       loop
       preload="auto"
-      audio.volume="0.45"
     ></audio>
+
     <audio
       id="normalBeep"
       src="heartbeat/normalbeep.mp3"
       loop
       preload="auto"
-      audio.volume="0.5"
     ></audio>
+
     <audio
       id="fastBeep"
       src="heartbeat/fastbeep.mp3"
       loop
       preload="auto"
-      audio.volume="0.5"
     ></audio>
+
     <audio
       id="worseningBeep"
       src="heartbeat/worseningbeep.mp3"
       loop
       preload="auto"
-      audio.volume="0.5"
     ></audio>
+
     <audio
       id="flatlineBeep"
       src="heartbeat/flatlinebeep.mp3"
       loop
       preload="auto"
-      audio.volume="0.5"
     ></audio>
 
     <script type="importmap">
@@ -502,7 +518,7 @@
       import { XRControllerModelFactory } from "three/addons/webxr/XRControllerModelFactory.js";
 
       // ---------------------------
-      // AUDIO INIT
+      // AUDIO
       // ---------------------------
       const audioElements = {
         background: document.getElementById("erBackground"),
@@ -512,10 +528,8 @@
         flatline: document.getElementById("flatlineBeep"),
       };
 
-      // Track current active heart beat sound
       let currentBeatSound = null;
 
-      // Function to stop all beat sounds
       function stopAllBeatSounds() {
         Object.values(audioElements).forEach((sound) => {
           if (sound !== audioElements.background) {
@@ -526,7 +540,6 @@
         currentBeatSound = null;
       }
 
-      // Function to play specific beat sound based on pulse color
       function playBeatSoundByColor(colorClass) {
         stopAllBeatSounds();
 
@@ -546,7 +559,6 @@
 
         currentBeatSound.play().catch((err) => {
           console.log("Audio play failed (user interaction required):", err);
-          // Fallback: Try again on first user click
           document.addEventListener(
             "click",
             () => {
@@ -560,56 +572,36 @@
       }
 
       // ---------------------------
-      // ECG WAVEFORM INIT (Integrated)
+      // ECG WAVEFORM
       // ---------------------------
       let ecgScene, ecgCamera, ecgRenderer;
       let ecgLine, ecgGeometry;
       let rig;
-      let pendingFace = false;
+
       let pendingRecenter = false;
+
       const numPoints = 100;
       const ecgWave = [
-        0,
-        0,
-        0,
-        0,
-        0.05,
-        0.1,
-        0.15,
-        0.05,
-        0,
-        -0.15,
-        1.3, // R spike
-        -0.5,
-        0.2,
-        0.1,
-        0.05,
-        0,
-        0,
-        0,
-        0,
-        0,
+        0, 0, 0, 0, 0.05, 0.1, 0.15, 0.05, 0, -0.15,
+        1.3, -0.5, 0.2, 0.1, 0.05, 0, 0, 0, 0, 0,
       ];
+
       let waveIndex = 0;
       let frameCounter = 0;
-      const framesPerShift = 2; // Controls ECG speed
+      const framesPerShift = 2;
 
       function initECG() {
         const container = document.getElementById("ecg-container");
 
-        // Create small orthographic scene for ECG
         ecgScene = new THREE.Scene();
-        // Adjust camera to center waveform vertically (better alignment above text)
         ecgCamera = new THREE.OrthographicCamera(-2.5, 2.5, 0.8, -0.2, 0.1, 10);
         ecgCamera.position.z = 5;
 
-        // Initialize renderer with alpha (transparent background)
         ecgRenderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
         ecgRenderer.setSize(container.clientWidth, container.clientHeight);
         ecgRenderer.setPixelRatio(window.devicePixelRatio);
         container.appendChild(ecgRenderer.domElement);
 
-        // Create ECG line geometry
         const points = [];
         const xStart = -2.5;
         const xEnd = 2.5;
@@ -620,22 +612,23 @@
         }
 
         ecgGeometry = new THREE.BufferGeometry().setFromPoints(points);
+
         const ecgMaterial = new THREE.LineBasicMaterial({
           color: 0x00ff00,
           linewidth: 2,
         });
+
         ecgLine = new THREE.Line(ecgGeometry, ecgMaterial);
-        ecgLine.scale.y = 0.4; // Slightly reduce scale for better fit
-        ecgLine.position.y = 0.1; // Nudge up slightly for perfect alignment
+        ecgLine.scale.y = 0.4;
+        ecgLine.position.y = 0.1;
         ecgScene.add(ecgLine);
 
-        // Resize ECG with window
         window.addEventListener("resize", () => {
+          ecgRenderer.setPixelRatio(window.devicePixelRatio);
           ecgRenderer.setSize(container.clientWidth, container.clientHeight);
         });
       }
 
-      // ECG Animation Loop
       function animateECG() {
         requestAnimationFrame(animateECG);
 
@@ -645,12 +638,10 @@
 
         const pos = ecgGeometry.attributes.position;
 
-        // Shift points left
         for (let i = 0; i < numPoints - 1; i++) {
           pos.setY(i, pos.getY(i + 1));
         }
 
-        // Insert next ECG sample
         pos.setY(numPoints - 1, ecgWave[waveIndex]);
         waveIndex = (waveIndex + 1) % ecgWave.length;
 
@@ -666,7 +657,6 @@
       const finalMessage = document.getElementById("final-message");
       const gameContent = document.getElementById("game-content");
 
-      // Play Button Click: Trigger Loading Screen + Start ECG
       playButton.addEventListener("click", async () => {
         const audios = [
           audioElements.background,
@@ -679,11 +669,12 @@
         for (const a of audios) {
           if (!a) continue;
           a.muted = false;
-          a.volume = 0.5; // set volume here (NOT via HTML attribute)
+          a.volume = 0.5;
           a.currentTime = 0;
+
           try {
             await a.play();
-            a.pause(); // unlocks playback; you can play later without being blocked
+            a.pause();
             a.currentTime = 0;
           } catch (e) {
             console.log("Audio unlock failed:", e);
@@ -692,12 +683,12 @@
 
         coverScreen.style.display = "none";
         loadingScreen.classList.add("active");
-        initECG(); // Initialize ECG when loading starts
-        animateECG(); // Start ECG animation
+
+        initECG(); 
+        animateECG(); 
         startLoadingSequence();
       });
 
-      // Loading Sequence Logic (Preserved)
       function startLoadingSequence() {
         typedMessages.forEach((message, index) => {
           const delay = parseInt(message.dataset.delay);
@@ -706,6 +697,7 @@
           setTimeout(() => {
             const txt = message.dataset.text || message.textContent;
             message.textContent = txt;
+
             message.style.setProperty("--chars", txt.length);
             message.style.width = "0ch";
             message.classList.remove("hidden");
@@ -718,27 +710,29 @@
               if (!nextMessage) {
                 setTimeout(() => {
                   finalMessage.classList.add("active");
+
                   setTimeout(() => {
                     loadingScreen.classList.remove("active");
+
                     setTimeout(() => {
                       loadingScreen.style.display = "none";
                       gameContent.style.display = "block";
-                      // 加载页面结束后启动背景音（循环播放）
+
                       audioElements.background.play().catch((err) => {
                         console.log("Background audio play failed:", err);
-                        // 浏览器 autoplay 限制 fallback：首次点击后重试
                         document.addEventListener(
                           "click",
                           () => {
                             audioElements.background
                               .play()
                               .catch((err) =>
-                                console.log("背景音启动失败:", err)
+                                console.log("Background noise failed", err)
                               );
                           },
                           { once: true }
                         );
                       });
+
                       initGame();
                     }, 500);
                   }, 3000);
@@ -749,34 +743,13 @@
         });
       }
 
-      // Game Variables (Updated with Strict Pulse Bounds)
+      // Game Variables
       let scene, camera, renderer, controls, raycaster, mouse;
 
-      let savedCamPos = new THREE.Vector3();
-      let savedCamQuat = new THREE.Quaternion();
-      let savedControlsTarget = new THREE.Vector3();
       // VR controller stuff
       const tempMatrix = new THREE.Matrix4();
       let controller1, controller2, controllerGrip1, controllerGrip2;
       const xrControllerModelFactory = new XRControllerModelFactory();
-      // ---------------------------
-      // THUMBSTICK TELEPORT (VR)
-      // ---------------------------
-      let teleportPlane, teleportMarker;
-      const teleportRaycaster = new THREE.Raycaster();
-      const teleportTarget = new THREE.Vector3();
-      let teleportHasTarget = false;
-
-      // stick state (so we teleport on release)
-      let teleportStickEngaged = false;
-
-      const TELEPORT_DEADZONE = 0.25;
-      const TELEPORT_ENGAGE_THRESHOLD = 0.7; // push stick far enough to "aim"
-      const TELEPORT_COOLDOWN_MS = 250;
-      let lastTeleportTime = 0;
-
-      const _teleportTmpMat = new THREE.Matrix4();
-      const _teleportTmpVec = new THREE.Vector3();
 
       // VR UI Globals
       let vrMenuGroup;
@@ -789,72 +762,60 @@
 
       let erRoom, patientModel;
       let ambientLight, directionalLight, emergencyLights;
+
       let vitals = {
-        pulse: 130, // Initial pulse (matches PDF)
+        pulse: 130,
         bpSystolic: 88,
         bpDiastolic: 60,
         respirations: 28,
         consecutiveWrongAnswers: 0,
         lastPulseChange: Date.now(),
       };
-      const PULSE_MIN = 60; // Realistic minimum BPM (no lower than this)
-      const PULSE_MAX = 220; // Realistic maximum BPM (arrest threshold)
+
+      const PULSE_MIN = 60;
+      const PULSE_MAX = 220;
+
       let gameState = {
-        currentScenario: 1, // 1-10 matching PDF scenarios
+        currentScenario: 1,
         isPatientStable: false,
         lastVitalUpdate: Date.now(),
         vitalDropInterval: 5000,
-        ivPenaltyActive: false, // For scenario 5 penalty (faster pulse drop for 2 questions)
-        penaltyQuestionCount: 0, // Track questions remaining for IV penalty
-        firstQuestionTriggered: false, // Track if first question was activated by patient click
+        ivPenaltyActive: false,
+        penaltyQuestionCount: 0,
+        firstQuestionTriggered: false,
         isZooming: false,
 
-        // Camera poses (used for desktop + VR session reset)
         originalCameraPos: new THREE.Vector3(0, 2, -2),
         targetCameraPos: new THREE.Vector3(0.5, 1.2, 0.8),
       };
 
-      // DOM Elements (Updated with Feedback Panel)
+      // DOM Elements
       const choiceWindow = document.getElementById("choiceWindow");
       const choicePrompt = document.getElementById("choicePrompt");
       const patientCondition = document.getElementById("patientCondition");
       const choiceOptions = document.getElementById("choiceOptions");
+
       const feedbackPanel = document.getElementById("feedbackPanel");
       const feedbackTitle = document.getElementById("feedbackTitle");
       const feedbackMessage = document.getElementById("feedbackMessage");
       const nextButton = document.getElementById("nextButton");
+
       const hoverTooltip = document.getElementById("hoverTooltip");
       const pulseValueUI = document.getElementById("pulseValue");
+
       const condPulseUI = document.getElementById("condPulse");
       const condBpUI = document.getElementById("condBp");
       const condRespUI = document.getElementById("condResp");
 
-      // All 10 Scenarios from PDF (Exact Prompts/Options/Correct Answers)
+      // Scenarios
       const scenarios = [
-        // Scenario 1: Initial Assessment Window (Triggered by patient click)
         {
           prompt: "What is the FIRST priority intervention?",
           options: [
-            {
-              text: "A. Start a full head-to-toe assessment",
-              correct: false,
-              pulseChange: +10,
-            },
-            {
-              text: "B. Call for imaging (CT abdomen)",
-              correct: false,
-              pulseChange: +12,
-            },
-            {
-              text: "C. Begin rapid IV fluid resuscitation",
-              correct: true,
-              pulseChange: -8,
-            },
-            {
-              text: "D. Ask the patient for their medical history",
-              correct: false,
-              pulseChange: +10,
-            },
+            { text: "A. Start a full head-to-toe assessment", correct: false, pulseChange: +10 },
+            { text: "B. Call for imaging (CT abdomen)", correct: false, pulseChange: +12 },
+            { text: "C. Begin rapid IV fluid resuscitation", correct: true, pulseChange: -8 },
+            { text: "D. Ask the patient for their medical history", correct: false, pulseChange: +10 },
           ],
           correctFeedback:
             "Correct! Signs of hypovolemic shock require immediate fluid resuscitation to maintain circulation.",
@@ -862,18 +823,13 @@
             "Incorrect. Shock requires immediate fluid resuscitation, not delayed assessment or imaging. Pulse will drop faster.",
           bpChange: { systolic: 0, diastolic: 0 },
         },
-        // Scenario 2: Wound/Abdomen Assessment
         {
           prompt: "What is most likely happening internally?",
           options: [
             { text: "A. Pneumothorax", correct: false, pulseChange: +15 },
             { text: "B. Internal hemorrhage", correct: true, pulseChange: -10 },
             { text: "C. Cardiac tamponade", correct: false, pulseChange: +15 },
-            {
-              text: "D. Anxiety-induced hyperventilation",
-              correct: false,
-              pulseChange: +12,
-            },
+            { text: "D. Anxiety-induced hyperventilation", correct: false, pulseChange: +12 },
           ],
           correctFeedback:
             "Correct! Abdominal rigidity, trauma mechanism and shock vitals strongly indicate internal bleeding.",
@@ -881,7 +837,6 @@
             "Incorrect. Abdominal trauma with rigid abdomen suggests internal hemorrhage. Heart rate will drop faster over time.",
           bpChange: { systolic: -2, diastolic: -1 },
         },
-        // Scenario 3: Shock Recognition
         {
           prompt: "Which type of shock best fits this presentation?",
           options: [
@@ -896,20 +851,11 @@
             "Incorrect. This is hypovolemic shock from blood loss. BP will decrease more rapidly.",
           bpChange: { systolic: -3, diastolic: -2 },
         },
-        // Scenario 4: Primary Survey Priority
         {
           prompt: "Which assessment framework should guide care RIGHT NOW?",
           options: [
-            {
-              text: "A. Head-to-toe assessment",
-              correct: false,
-              pulseChange: +8,
-            },
-            {
-              text: "B. ABCs / Primary survey",
-              correct: true,
-              pulseChange: -6,
-            },
+            { text: "A. Head-to-toe assessment", correct: false, pulseChange: +8 },
+            { text: "B. ABCs / Primary survey", correct: true, pulseChange: -6 },
             { text: "C. Pain assessment", correct: false, pulseChange: +8 },
             { text: "D. Secondary survey", correct: false, pulseChange: +8 },
           ],
@@ -919,26 +865,13 @@
             "Incorrect. Primary survey (ABCs) takes priority in unstable patients. Heart rate will decline gradually.",
           bpChange: { systolic: -2, diastolic: -1 },
         },
-        // Scenario 5: Access Decision: IV Supplies
         {
           prompt: "Which IV access is most appropriate RIGHT NOW?",
           options: [
-            {
-              text: "A. 24-gauge IV in hand",
-              correct: false,
-              pulseChange: +15,
-            },
+            { text: "A. 24-gauge IV in hand", correct: false, pulseChange: +15 },
             { text: "B. 20-gauge in wrist", correct: false, pulseChange: +12 },
-            {
-              text: "C. 18-gauge in antecubital",
-              correct: true,
-              pulseChange: -9,
-            },
-            {
-              text: "D. No IV-give oral fluids",
-              correct: false,
-              pulseChange: +20,
-            },
+            { text: "C. 18-gauge in antecubital", correct: true, pulseChange: -9 },
+            { text: "D. No IV-give oral fluids", correct: false, pulseChange: +20 },
           ],
           correctFeedback:
             "Correct! Large-bore IV access allows rapid delivery of fluids and blood.",
@@ -947,7 +880,6 @@
           bpChange: { systolic: -2, diastolic: -1 },
           penalty: "ivPenalty",
         },
-        // Scenario 6: Fluid Choice Judgment
         {
           prompt: "Which fluid is most appropriate initially?",
           options: [
@@ -962,62 +894,28 @@
             "Incorrect. Minimal improvement in vitals, heart rate remains unstable.",
           bpChange: { systolic: +1, diastolic: +1 }, // Minimal improvement if wrong
         },
-        // Scenario 7: Critical Decision: Blood Transfusion (BP drops to 78/54)
         {
           prompt: "What should a nurse do next?",
           options: [
-            {
-              text: "A. Increase fluid rate",
-              correct: false,
-              pulseChange: +18,
-            },
-            {
-              text: "B. Prepare for emergency blood transfusion",
-              correct: true,
-              pulseChange: -12,
-            },
-            {
-              text: "C. Wait for the doctor to arrive",
-              correct: false,
-              pulseChange: +25,
-            },
-            {
-              text: "D. Get a CT scan quickly",
-              correct: false,
-              pulseChange: +22,
-            },
+            { text: "A. Increase fluid rate", correct: false, pulseChange: +18 },
+            { text: "B. Prepare for emergency blood transfusion", correct: true, pulseChange: -12 },
+            { text: "C. Wait for the doctor to arrive", correct: false, pulseChange: +25 },
+            { text: "D. Get a CT scan quickly", correct: false, pulseChange: +22 },
           ],
           correctFeedback:
             "Correct! Persistent hypotension after fluids indicates ongoing blood loss.",
           incorrectFeedback:
             "Incorrect. One more wrong answer will cause cardiac arrest.",
-          bpChange: { systolic: -10, diastolic: -6 }, // BP drops to 78/54
+          bpChange: { systolic: -10, diastolic: -6 },
           critical: true,
         },
-        // Scenario 8: Blood Timing Concept
         {
           prompt: "When is blood indicated in trauma resuscitation?",
           options: [
-            {
-              text: "A. After CT confirms bleeding",
-              correct: false,
-              pulseChange: +15,
-            },
-            {
-              text: "B. When BP remains unstable despite fluids",
-              correct: true,
-              pulseChange: -10,
-            },
-            {
-              text: "C. Only after labs return",
-              correct: false,
-              pulseChange: +18,
-            },
-            {
-              text: "D. When pain is controlled",
-              correct: false,
-              pulseChange: +15,
-            },
+            { text: "A. After CT confirms bleeding", correct: false, pulseChange: +15 },
+            { text: "B. When BP remains unstable despite fluids", correct: true, pulseChange: -10 },
+            { text: "C. Only after labs return", correct: false, pulseChange: +18 },
+            { text: "D. When pain is controlled", correct: false, pulseChange: +15 },
           ],
           correctFeedback:
             "Correct! Blood is required when fluids alone cannot stabilize circulation.",
@@ -1025,30 +923,13 @@
             "Incorrect. Sudden heart rate drop, patient is in near-failure state.",
           bpChange: { systolic: -5, diastolic: -3 },
         },
-        // Scenario 9: Imaging vs Stability Trap
         {
           prompt: "Why is CT imaging NOT the priority right now?",
           options: [
-            {
-              text: "A. CT takes too long to schedule",
-              correct: false,
-              pulseChange: +12,
-            },
-            {
-              text: "B. Imaging worsens bleeding",
-              correct: false,
-              pulseChange: +12,
-            },
-            {
-              text: "C. The patient is hemodynamically unstable",
-              correct: true,
-              pulseChange: -8,
-            },
-            {
-              text: "D. CT is only for fractures",
-              correct: false,
-              pulseChange: +15,
-            },
+            { text: "A. CT takes too long to schedule", correct: false, pulseChange: +12 },
+            { text: "B. Imaging worsens bleeding", correct: false, pulseChange: +12 },
+            { text: "C. The patient is hemodynamically unstable", correct: true, pulseChange: -8 },
+            { text: "D. CT is only for fractures", correct: false, pulseChange: +15 },
           ],
           correctFeedback:
             "Correct! Unstable patients must be stabilized before imaging.",
@@ -1056,26 +937,13 @@
             "Incorrect. Heart rhythm becomes irregular, one final chance remains.",
           bpChange: { systolic: -5, diastolic: -3 },
         },
-        // Scenario 10: Final Pressure Moment
         {
           prompt: "What is your PRIORITY action?",
           options: [
-            {
-              text: "A. Comfort the patient",
-              correct: false,
-              pulseChange: +30,
-            },
+            { text: "A. Comfort the patient", correct: false, pulseChange: +30 },
             { text: "B. Document findings", correct: false, pulseChange: +35 },
-            {
-              text: "C. Reassess temperature",
-              correct: false,
-              pulseChange: +30,
-            },
-            {
-              text: "D. Notify trauma team-suspected internal hemorrhage",
-              correct: true,
-              pulseChange: -15,
-            },
+            { text: "C. Reassess temperature", correct: false, pulseChange: +30 },
+            { text: "D. Notify trauma team-suspected internal hemorrhage", correct: true, pulseChange: -15 },
           ],
           correctFeedback:
             "Correct! Rapid escalation ensures immediate surgical intervention.",
@@ -1090,12 +958,10 @@
         initBoilerplate();
         loadAssets();
         renderer.setAnimationLoop(renderLoop);
-        // Start initial beat sound (matches initial yellow pulse)
         playBeatSoundByColor("pulse-yellow");
       }
 
       function yawFromQuaternion(q) {
-        // yaw (rotation around Y axis) from quaternion
         const t3 = 2 * (q.w * q.y + q.z * q.x);
         const t4 = 1 - 2 * (q.y * q.y + q.z * q.z);
         return Math.atan2(t3, t4);
@@ -1106,33 +972,28 @@
         return { x: 0, y: Math.sin(half), z: 0, w: Math.cos(half) };
       }
 
-      function recenterXRToFacePatient(frame) {
+      function recenterXRToFacePatient() {
         if (!renderer || !patientModel) return false;
 
-        // These are only valid while an XR frame is being produced:
+        const frame = renderer.xr.getFrame?.();
         const refSpace = renderer.xr.getReferenceSpace?.();
         if (!frame || !refSpace) return false;
 
         const pose = frame.getViewerPose(refSpace);
         if (!pose) return false;
 
-        // Viewer (headset) position + orientation in the current reference space
         const p = pose.transform.position;
         const o = pose.transform.orientation;
         const headsetYaw = yawFromQuaternion(o);
 
-        // Patient world position
         const patientPos = new THREE.Vector3();
         patientModel.getWorldPosition(patientPos);
 
-        // Desired yaw from viewer -> patient
         const dx = patientPos.x - p.x;
         const dz = patientPos.z - p.z;
         const desiredYaw = Math.atan2(dx, dz);
 
         const yawTune = Math.PI / 2;
-
-        // Offset needed to rotate "world" so viewer forward points at patient
         const correction = desiredYaw - headsetYaw + yawTune;
 
         const offsetRefSpace = refSpace.getOffsetReferenceSpace(
@@ -1143,34 +1004,10 @@
         return true;
       }
 
-      function faceRigToPatient() {
-        if (!rig || !patientModel || !renderer || !camera) return;
-
-        // rig world position
-        const rigPos = new THREE.Vector3();
-        rig.getWorldPosition(rigPos);
-
-        // patient world position
-        const target = new THREE.Vector3();
-        patientModel.getWorldPosition(target);
-
-        // desired yaw to face patient
-        const dir = target.sub(rigPos);
-        const desiredYaw = Math.atan2(dir.x, dir.z);
-
-        // current headset yaw
-        const xrCam = renderer.xr.getCamera(camera);
-        const headsetYaw = yawFromQuaternion(xrCam.quaternion);
-
-        // rotate rig so headset forward points at patient
-        rig.rotation.y = desiredYaw - headsetYaw;
-      }
-
-      // Game Setup (Updated with Patient Click Trigger)
+      // Game Setup
       function initBoilerplate() {
         scene = new THREE.Scene();
 
-        // XR rig so we can reset/offset VR sessions cleanly
         rig = new THREE.Group();
         scene.add(rig);
 
@@ -1187,17 +1024,16 @@
         renderer.setSize(window.innerWidth, window.innerHeight);
         renderer.setPixelRatio(window.devicePixelRatio);
 
-        // WebXR ON
         renderer.xr.enabled = true;
         renderer.xr.setReferenceSpaceType("local-floor");
 
         document.body.appendChild(renderer.domElement);
 
-        // VR button (requests DOM overlay so your HTML UI can remain visible in VR on supported browsers)
         const vrBtn = VRButton.createButton(renderer, {
           optionalFeatures: ["local-floor", "dom-overlay"],
-          domOverlay: { root: document.getElementById("xr-ui-container") },
+          domOverlay: { root: document.body },
         });
+
         vrBtn.style.position = "fixed";
         vrBtn.style.left = "20px";
         vrBtn.style.bottom = "20px";
@@ -1206,39 +1042,45 @@
 
         renderer.xr.addEventListener("sessionstart", () => {
           pendingRecenter = true;
+          controls.enabled = false;
 
-          // Save desktop view so we can restore after VR
-          savedCamPos.copy(camera.position);
-          savedCamQuat.copy(camera.quaternion);
-          if (controls) savedControlsTarget.copy(controls.target);
-          controls.enabled = false; // OrbitControls is desktop-only
+          if (vrPulseGroup) vrPulseGroup.visible = true;
+          updateVitalUI();
         });
 
         renderer.xr.addEventListener("sessionend", () => {
           pendingRecenter = false;
 
-          // Defer restore to next frame; three.js can overwrite pose during XR teardown
           requestAnimationFrame(() => {
-            // Reset rig (VR offsets live here)
+            if (vrPulseGroup) vrPulseGroup.visible = false;
+
             rig.position.set(0, 0, 0);
             rig.rotation.set(0, 0, 0);
+            rig.updateMatrixWorld(true);
 
-            // Restore the exact desktop camera pose from before VR
-            camera.position.copy(savedCamPos);
-            camera.quaternion.copy(savedCamQuat);
+            camera.position.set(0, 2, -2);
+
+            camera.quaternion.set(-2.0, 0.85, 0.39, 5.657130561438501e-17);
+
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.setSize(window.innerWidth, window.innerHeight, false);
+
+            camera.aspect = window.innerWidth / window.innerHeight;
             camera.updateMatrixWorld(true);
 
-            // Restore OrbitControls target + re-sync
             if (controls) {
               controls.enabled = true;
-              controls.target.copy(savedControlsTarget);
+
+              const dist = camera.position.distanceTo(new THREE.Vector3(1.75, 0.75, 1.3));
+              const fwd = new THREE.Vector3(0, 0, -1)
+                .applyQuaternion(camera.quaternion)
+                .normalize();
+
+              controls.target.copy(camera.position).add(fwd.multiplyScalar(dist));
               controls.update();
             }
 
-            gameState.isZooming = false;
-
-            // Restore default reference space type
-            renderer.xr.setReferenceSpaceType("local-floor");
+            gameState.isZooming = false;  
           });
         });
 
@@ -1249,17 +1091,19 @@
         controls.maxDistance = 8;
         controls.maxPolarAngle = Math.PI / 2 - 0.1;
         controls.target.set(1.75, 0.75, 1.3);
+        controls.update();            
 
         raycaster = new THREE.Raycaster();
         mouse = new THREE.Vector2();
 
-        // Desktop mouse hover + click (VR uses controller trigger)
         window.addEventListener("mousemove", (e) => {
           mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
           mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+
           hoverTooltip.style.left = `${e.clientX + 10}px`;
           hoverTooltip.style.top = `${e.clientY - 20}px`;
         });
+
         window.addEventListener("click", () => {
           if (renderer.xr.isPresenting) return;
           handleMouseClick();
@@ -1273,28 +1117,20 @@
         emergencyLights.position.set(2, 3, 2);
         scene.add(ambientLight, directionalLight, emergencyLights);
 
-        // VR UI Setup
         createVRUI();
-
-        // VR controllers (laser + trigger select)
         setupVRControllers();
-
-        createTeleportSystem();
 
         window.addEventListener("resize", onWindowResize);
 
-        // Next Button Click: Progress to Next Scenario (Automatic after first question)
         nextButton.addEventListener("click", () => {
           feedbackPanel.style.display = "none";
           gameState.currentScenario++;
 
-          // Check if all scenarios are completed
           if (gameState.currentScenario > scenarios.length) {
             endSimulation(true);
             return;
           }
 
-          // Show next scenario AUTOMATICALLY (no more clicks needed)
           showScenario(gameState.currentScenario - 1);
         });
       }
@@ -1318,12 +1154,14 @@
 
         controllerGrip1 = renderer.xr.getControllerGrip(0);
         controllerGrip2 = renderer.xr.getControllerGrip(1);
+
         controllerGrip1.add(
           xrControllerModelFactory.createControllerModel(controllerGrip1)
         );
         controllerGrip2.add(
           xrControllerModelFactory.createControllerModel(controllerGrip2)
         );
+
         scene.add(controllerGrip1);
         scene.add(controllerGrip2);
       }
@@ -1340,164 +1178,22 @@
         }
       }
 
-      function createTeleportSystem() {
-        // Invisible floor to raycast against (simple + reliable)
-        teleportPlane = new THREE.Mesh(
-          new THREE.PlaneGeometry(50, 50),
-          new THREE.MeshBasicMaterial({ transparent: true, opacity: 0.0 })
-        );
-        teleportPlane.rotation.x = -Math.PI / 2;
-        teleportPlane.position.y = 0; // floor level
-        teleportPlane.name = "teleportFloor";
-        scene.add(teleportPlane);
-
-        // Visible marker (ring) where you’ll land
-        teleportMarker = new THREE.Mesh(
-          new THREE.RingGeometry(0.15, 0.22, 32),
-          new THREE.MeshBasicMaterial({
-            color: 0x00ff9d,
-            side: THREE.DoubleSide,
-          })
-        );
-        teleportMarker.rotation.x = -Math.PI / 2;
-        teleportMarker.visible = false;
-        scene.add(teleportMarker);
-      }
-
-      // Try to read a thumbstick from an XR gamepad robustly
-      function getThumbstickAxes(gamepad) {
-        if (!gamepad || !gamepad.axes || gamepad.axes.length === 0) return null;
-
-        // Many XR controllers: axes[2],axes[3] are thumbstick; fallback to [0],[1]
-        if (gamepad.axes.length >= 4)
-          return { x: gamepad.axes[2], y: gamepad.axes[3] };
-        if (gamepad.axes.length >= 2)
-          return { x: gamepad.axes[0], y: gamepad.axes[1] };
-        return null;
-      }
-
-      function getInputSourceByHandedness(session, handedness) {
-        if (!session) return null;
-        for (const src of session.inputSources) {
-          if (src && src.handedness === handedness && src.gamepad) return src;
-        }
-        return null;
-      }
-
-      function updateTeleportFromThumbstick() {
-        if (!renderer.xr.isPresenting) return;
-
-        // Don’t teleport while interacting with VR UI
-        if (
-          (vrEndGroup && vrEndGroup.visible) ||
-          (vrFeedbackGroup && vrFeedbackGroup.visible) ||
-          (vrMenuGroup && vrMenuGroup.visible)
-        ) {
-          teleportMarker.visible = false;
-          teleportStickEngaged = false;
-          teleportHasTarget = false;
-          return;
-        }
-
-        const session = renderer.xr.getSession();
-        if (!session) return;
-
-        // Usually left stick = locomotion. If you want right stick, change "left" to "right".
-        const src =
-          getInputSourceByHandedness(session, "left") ||
-          session.inputSources.find((s) => s?.gamepad);
-        if (!src || !src.gamepad) return;
-
-        const axes = getThumbstickAxes(src.gamepad);
-        if (!axes) return;
-
-        const ax = Math.abs(axes.x) < TELEPORT_DEADZONE ? 0 : axes.x;
-        const ay = Math.abs(axes.y) < TELEPORT_DEADZONE ? 0 : axes.y;
-
-        // Engage when stick pushed strongly in any direction (usually forward is -Y)
-        const engaged = Math.abs(ax) + Math.abs(ay) > TELEPORT_ENGAGE_THRESHOLD;
-
-        // Choose a controller object to cast the ray from:
-        // If src is left-handed, use controller1 (index 0) *most of the time*.
-        // Fallback: use whichever exists.
-        const castController = controller1 || controller2;
-        if (!castController) return;
-
-        if (engaged) {
-          // Ray from controller forward
-          _teleportTmpMat
-            .identity()
-            .extractRotation(castController.matrixWorld);
-          teleportRaycaster.ray.origin.setFromMatrixPosition(
-            castController.matrixWorld
-          );
-          teleportRaycaster.ray.direction
-            .set(0, 0, -1)
-            .applyMatrix4(_teleportTmpMat);
-
-          const hits = teleportRaycaster.intersectObject(teleportPlane, false);
-
-          if (hits.length) {
-            teleportTarget.copy(hits[0].point);
-            teleportHasTarget = true;
-
-            teleportMarker.position.set(
-              teleportTarget.x,
-              teleportPlane.position.y + 0.01,
-              teleportTarget.z
-            );
-            teleportMarker.visible = true;
-          } else {
-            teleportHasTarget = false;
-            teleportMarker.visible = false;
-          }
-        }
-
-        // Teleport on release (engaged last frame, not engaged now)
-        if (teleportStickEngaged && !engaged && teleportHasTarget) {
-          const now = performance.now();
-          if (now - lastTeleportTime > TELEPORT_COOLDOWN_MS) {
-            lastTeleportTime = now;
-            doTeleportTo(teleportTarget);
-          }
-          teleportMarker.visible = false;
-          teleportHasTarget = false;
-        }
-
-        teleportStickEngaged = engaged;
-      }
-
-      function doTeleportTo(worldTarget) {
-        if (!rig || !renderer || !camera) return;
-
-        // Get current XR camera world position (head position)
-        const xrCam = renderer.xr.getCamera(camera);
-        _teleportTmpVec.setFromMatrixPosition(xrCam.matrixWorld);
-
-        // Move rig so head ends up at target (XZ only)
-        const dx = worldTarget.x - _teleportTmpVec.x;
-        const dz = worldTarget.z - _teleportTmpVec.z;
-
-        rig.position.x += dx;
-        rig.position.z += dz;
-
-        // keep on floor
-        rig.position.y = 0;
-      }
-
       function buildLaser() {
         const geometry = new THREE.BufferGeometry().setFromPoints([
           new THREE.Vector3(0, 0, 0),
           new THREE.Vector3(0, 0, -1),
         ]);
+
         const material = new THREE.LineBasicMaterial({ color: 0xffffff });
         const line = new THREE.Line(geometry, material);
+
         line.name = "laser";
         line.scale.z = 5;
+
         return line;
       }
 
-      // New VR UI Functions
+      // VR UI Functions
       function createVRUI() {
         createVRMenu();
         createVRPulseMonitor();
@@ -1510,7 +1206,6 @@
         scene.add(vrMenuGroup);
         vrMenuGroup.visible = false;
 
-        // 1. Background Panel
         const panelGeo = new THREE.PlaneGeometry(1.2, 0.9);
         const panelMat = new THREE.MeshBasicMaterial({
           color: 0x000000,
@@ -1518,30 +1213,31 @@
           transparent: true,
           side: THREE.DoubleSide,
         });
+
         const panel = new THREE.Mesh(panelGeo, panelMat);
         vrMenuGroup.add(panel);
 
-        // 2. Prompt Text
         const promptGeo = new THREE.PlaneGeometry(1.1, 0.15);
         const promptMat = new THREE.MeshBasicMaterial({ transparent: true });
         const promptMesh = new THREE.Mesh(promptGeo, promptMat);
+
         promptMesh.position.set(0, 0.35, 0.01);
         promptMesh.name = "vrPrompt";
         vrMenuGroup.add(promptMesh);
 
-        // 3. Option Buttons (A, B, C, D)
         for (let i = 0; i < 4; i++) {
           const btnGeo = new THREE.PlaneGeometry(1.0, 0.12);
           const btnMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
           const btn = new THREE.Mesh(btnGeo, btnMat);
+
           btn.position.set(0, 0.15 - i * 0.15, 0.01);
           btn.userData = { isOption: true, index: i };
 
-          // Button Text Label
           const labelGeo = new THREE.PlaneGeometry(1.0, 0.12);
           const labelMat = new THREE.MeshBasicMaterial({ transparent: true });
           const label = new THREE.Mesh(labelGeo, labelMat);
-          label.position.set(0, 0, 0.005); // slightly in front of button
+
+          label.position.set(0, 0, 0.005);
           btn.add(label);
 
           vrUIButtons.push(btn);
@@ -1549,29 +1245,54 @@
         }
       }
 
+      const _hudPos = new THREE.Vector3();
+      const _hudDir = new THREE.Vector3();
+      const _hudRight = new THREE.Vector3();
+      const _hudUp = new THREE.Vector3();
+
+      function placePulseHUD() {
+        if (!renderer?.xr?.isPresenting || !vrPulseGroup) return;
+
+        const xrCam = renderer.xr.getCamera(camera);
+
+        xrCam.getWorldPosition(_hudPos);
+        xrCam.getWorldDirection(_hudDir).normalize();
+
+        _hudUp.set(0, 1, 0).applyQuaternion(xrCam.quaternion).normalize();
+        _hudRight.crossVectors(_hudDir, _hudUp).normalize();
+
+        const forward = 1.0; 
+        const up = 0.8; 
+        const right = 0.00; 
+
+        vrPulseGroup.position.copy(_hudPos)
+          .add(_hudDir.multiplyScalar(forward))
+          .add(_hudUp.multiplyScalar(up))
+          .add(_hudRight.multiplyScalar(right));
+
+        vrPulseGroup.quaternion.copy(xrCam.quaternion);
+      }
+
+
       function createVRPulseMonitor() {
         vrPulseGroup = new THREE.Group();
         scene.add(vrPulseGroup);
 
-        // Position relative to patient (floating above)
-        vrPulseGroup.position.set(1.75, 1.8, 1.3);
-        vrPulseGroup.lookAt(0, 1.6, 0); // Rotate to face roughly towards 0,0
-
-        // Background
         const bgGeo = new THREE.PlaneGeometry(0.6, 0.3);
         const bgMat = new THREE.MeshBasicMaterial({
           color: 0x000000,
-          opacity: 0.8,
+          opacity: 0.6,
           transparent: true,
           side: THREE.DoubleSide,
         });
+
         const bg = new THREE.Mesh(bgGeo, bgMat);
         vrPulseGroup.add(bg);
 
-        // Text Mesh
         const textGeo = new THREE.PlaneGeometry(0.55, 0.25);
         const textMat = new THREE.MeshBasicMaterial({ transparent: true });
         const textMesh = new THREE.Mesh(textGeo, textMat);
+
         textMesh.position.z = 0.01;
         textMesh.name = "pulseText";
         vrPulseGroup.add(textMesh);
@@ -1584,7 +1305,6 @@
         scene.add(vrFeedbackGroup);
         vrFeedbackGroup.visible = false;
 
-        // Background
         const panelGeo = new THREE.PlaneGeometry(1.0, 0.8);
         const panelMat = new THREE.MeshBasicMaterial({
           color: 0x000000,
@@ -1592,47 +1312,42 @@
           transparent: true,
           side: THREE.DoubleSide,
         });
+
         const panel = new THREE.Mesh(panelGeo, panelMat);
         panel.name = "feedbackBg";
         vrFeedbackGroup.add(panel);
 
-        // Title
         const titleGeo = new THREE.PlaneGeometry(0.9, 0.15);
         const titleMat = new THREE.MeshBasicMaterial({ transparent: true });
         const title = new THREE.Mesh(titleGeo, titleMat);
+
         title.position.set(0, 0.25, 0.01);
         title.name = "feedbackTitle";
         vrFeedbackGroup.add(title);
 
-        // Message
         const msgGeo = new THREE.PlaneGeometry(0.9, 0.3);
         const msgMat = new THREE.MeshBasicMaterial({ transparent: true });
         const msg = new THREE.Mesh(msgGeo, msgMat);
+
         msg.position.set(0, 0, 0.01);
         msg.name = "feedbackMsg";
         vrFeedbackGroup.add(msg);
 
-        // Continue Button
         const btnGeo = new THREE.PlaneGeometry(0.4, 0.12);
         const btnMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
         const btn = new THREE.Mesh(btnGeo, btnMat);
+
         btn.position.set(0, -0.25, 0.01);
         btn.userData = { isContinue: true };
 
-        // Label
         const labelGeo = new THREE.PlaneGeometry(0.4, 0.12);
         const labelMat = new THREE.MeshBasicMaterial({ transparent: true });
         const label = new THREE.Mesh(labelGeo, labelMat);
+
         label.position.set(0, 0, 0.005);
-        label.material.map = createTextTexture(
-          "CONTINUE",
-          256,
-          64,
-          null,
-          "white",
-          20
-        );
+        label.material.map = createTextTexture("CONTINUE", 256, 64, null, "white", 20);
         label.material.needsUpdate = true;
+
         btn.add(label);
 
         vrFeedbackButtons.push(btn);
@@ -1644,7 +1359,6 @@
         scene.add(vrEndGroup);
         vrEndGroup.visible = false;
 
-        // Large Background
         const panelGeo = new THREE.PlaneGeometry(2.0, 1.5);
         const panelMat = new THREE.MeshBasicMaterial({
           color: 0x000000,
@@ -1652,60 +1366,48 @@
           transparent: true,
           side: THREE.DoubleSide,
         });
+
         const panel = new THREE.Mesh(panelGeo, panelMat);
         vrEndGroup.add(panel);
 
-        // Title
         const titleGeo = new THREE.PlaneGeometry(1.5, 0.3);
         const titleMat = new THREE.MeshBasicMaterial({ transparent: true });
         const title = new THREE.Mesh(titleGeo, titleMat);
+
         title.position.set(0, 0.4, 0.01);
         title.name = "endTitle";
         vrEndGroup.add(title);
 
-        // Message
         const msgGeo = new THREE.PlaneGeometry(1.5, 0.5);
         const msgMat = new THREE.MeshBasicMaterial({ transparent: true });
         const msg = new THREE.Mesh(msgGeo, msgMat);
+
         msg.position.set(0, -0.1, 0.01);
         msg.name = "endMsg";
         vrEndGroup.add(msg);
 
-        // Restart Button
         const btnGeo = new THREE.PlaneGeometry(0.6, 0.15);
         const btnMat = new THREE.MeshBasicMaterial({ color: 0x333333 });
         const btn = new THREE.Mesh(btnGeo, btnMat);
+
         btn.position.set(0, -0.5, 0.01);
         btn.userData = { isRestart: true };
 
-        // Label
         const labelGeo = new THREE.PlaneGeometry(0.6, 0.15);
         const labelMat = new THREE.MeshBasicMaterial({ transparent: true });
         const label = new THREE.Mesh(labelGeo, labelMat);
+
         label.position.set(0, 0, 0.005);
-        label.material.map = createTextTexture(
-          "PLAY AGAIN",
-          512,
-          128,
-          null,
-          "white",
-          40
-        );
+        label.material.map = createTextTexture("PLAY AGAIN", 512, 128, null, "white", 40);
         label.material.needsUpdate = true;
+
         btn.add(label);
 
         vrEndButtons.push(btn);
         vrEndGroup.add(btn);
       }
 
-      function createTextTexture(
-        text,
-        width,
-        height,
-        bgColor,
-        textColor,
-        fontSize
-      ) {
+      function createTextTexture(text, width, height, bgColor, textColor, fontSize) {
         const canvas = document.createElement("canvas");
         canvas.width = width;
         canvas.height = height;
@@ -1723,22 +1425,15 @@
 
         ctx.fillText(text, width / 2, height / 2);
 
-        const tex = new THREE.CanvasTexture(canvas);
-        return tex;
+        return new THREE.CanvasTexture(canvas);
       }
 
       function updateVRPulse(pulse, colorHex) {
         if (!vrPulseGroup) return;
+
         const textMesh = vrPulseGroup.getObjectByName("pulseText");
-        // Re-render text texture
-        textMesh.material.map = createTextTexture(
-          `PULSE: ${pulse} BPM`,
-          512,
-          256,
-          null,
-          colorHex,
-          60
-        );
+        textMesh.material.map = createTextTexture(`PULSE: ${pulse} BPM`, 512, 256, null, colorHex, 60);
+        
         textMesh.material.needsUpdate = true;
       }
 
@@ -1762,7 +1457,6 @@
         );
         titleMesh.material.needsUpdate = true;
 
-        // Simple text wrap handling could be added here, for now use smaller font
         msgMesh.material.map = createTextTexture(
           message,
           1024,
@@ -1808,7 +1502,6 @@
 
       function updateVRMenu(index) {
         const scenario = scenarios[index];
-        // Update Prompt
         const promptMesh = vrMenuGroup.getObjectByName("vrPrompt");
         promptMesh.material.map = createTextTexture(
           scenario.prompt,
@@ -1820,26 +1513,17 @@
         );
         promptMesh.material.needsUpdate = true;
 
-        // Update Buttons
         scenario.options.forEach((opt, i) => {
           const btn = vrUIButtons[i];
           const label = btn.children[0];
 
-          label.material.map = createTextTexture(
-            opt.text,
-            1024,
-            128,
-            null,
-            "white",
-            35
-          );
+          label.material.map = createTextTexture(opt.text, 1024, 128, null, "white", 35);
           label.material.needsUpdate = true;
 
           btn.userData.correct = opt.correct;
           btn.userData.pulseChange = opt.pulseChange;
           btn.userData.scenarioIndex = index;
 
-          // Reset button color
           btn.material.color.setHex(0x333333);
         });
       }
@@ -1849,7 +1533,6 @@
         raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
 
-        // 1. End Screen
         if (vrEndGroup && vrEndGroup.visible) {
           const intersects = raycaster.intersectObjects(vrEndButtons, true);
           if (intersects.length > 0) {
@@ -1859,7 +1542,6 @@
           return;
         }
 
-        // 2. Feedback Panel
         if (vrFeedbackGroup && vrFeedbackGroup.visible) {
           const intersects = raycaster.intersectObjects(
             vrFeedbackButtons,
@@ -1877,11 +1559,9 @@
           return;
         }
 
-        // 3. Question Menu
         const intersects = raycaster.intersectObjects(vrUIButtons, true);
 
         if (intersects.length > 0) {
-          // Find the button (could be label that was hit)
           let target = intersects[0].object;
           if (target.parent && target.parent.userData.isOption) {
             target = target.parent;
@@ -1904,7 +1584,6 @@
 
         let intersects = [];
 
-        // If Menu is Open, check menu buttons
         if (vrEndGroup && vrEndGroup.visible) {
           intersects = raycaster.intersectObjects(vrEndButtons, true);
         } else if (vrFeedbackGroup && vrFeedbackGroup.visible) {
@@ -1912,20 +1591,17 @@
         } else if (vrMenuGroup && vrMenuGroup.visible) {
           intersects = raycaster.intersectObjects(vrUIButtons, true);
         } else if (patientModel) {
-          // Otherwise check patient
           intersects = raycaster.intersectObject(patientModel, true);
         }
 
-        // shorten laser to hit point (nice feedback)
         const laser = controller.getObjectByName("laser");
         if (laser) {
           laser.scale.z = intersects.length ? intersects[0].distance : 5;
 
-          // Visual feedback: Red if hitting target, white otherwise
           if (intersects.length > 0) {
-            laser.material.color.setHex(0xff0000); // Red
+            laser.material.color.setHex(0xff0000);
           } else {
-            laser.material.color.setHex(0xffffff); // White
+            laser.material.color.setHex(0xffffff);
           }
         }
       }
@@ -1938,7 +1614,6 @@
         )
           return;
 
-        // Cast from controller forward
         tempMatrix.identity().extractRotation(controller.matrixWorld);
         raycaster.ray.origin.setFromMatrixPosition(controller.matrixWorld);
         raycaster.ray.direction.set(0, 0, -1).applyMatrix4(tempMatrix);
@@ -1949,19 +1624,15 @@
         gameState.firstQuestionTriggered = true;
         hoverTooltip.style.display = "none";
 
-        // FIX: In VR, skip the camera zoom animation to avoid nausea/tracking conflicts
-        // and show the popup immediately.
         if (renderer.xr.isPresenting) {
           showScenario(0);
         } else {
-          // Desktop mode: maintain the cinematic zoom
           zoomToPatient(() => {
             showScenario(0);
           });
         }
       }
 
-      // Load 3D Assets
       function loadAssets() {
         const loader = new GLTFLoader();
         loader.load(
@@ -2002,15 +1673,12 @@
         );
       }
 
-      // Start Game: Wait for Patient Click to Trigger First Question
       function startGame() {
         console.log("Game started! Click patient to begin assessment.");
         gameState.lastVitalUpdate = Date.now();
         updateVitalUI();
-        // No automatic scenario - wait for patient click
       }
 
-      // Handle Patient Click (Triggers First Question)
       function handleMouseClick() {
         if (
           !patientModel ||
@@ -2024,18 +1692,15 @@
 
         if (intersects.length > 0) {
           gameState.firstQuestionTriggered = true;
-          hoverTooltip.style.display = "none"; // Hide tooltip after first click
+          hoverTooltip.style.display = "none"; 
 
-          // Zoom to patient for better immersion
           zoomToPatient(() => {
-            showScenario(0); // Show first scenario (index 0) after zoom
+            showScenario(0);
           });
         }
       }
 
-      // Check for Patient Hover (Show Tooltip Before First Click)
       function checkPatientHover() {
-        // Only show tooltip on desktop (VR users use laser)
         if (renderer && renderer.xr && renderer.xr.isPresenting) {
           hoverTooltip.style.display = "none";
           return;
@@ -2055,7 +1720,6 @@
         hoverTooltip.style.display = intersects.length > 0 ? "block" : "none";
       }
 
-      // Zoom to Patient with Callback
       function zoomToPatient(callback) {
         gameState.isZooming = true;
         controls.enabled = false;
@@ -2089,13 +1753,11 @@
         return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
       }
 
-      // Show Specific Scenario
       function showScenario(index) {
         const scenario = scenarios[index];
         choicePrompt.textContent = scenario.prompt;
         choiceOptions.innerHTML = "";
 
-        // Update BP per scenario (e.g., scenario 7 drops to 78/54)
         vitals.bpSystolic = Math.max(
           60,
           vitals.bpSystolic + scenario.bpChange.systolic
@@ -2105,7 +1767,6 @@
           vitals.bpDiastolic + scenario.bpChange.diastolic
         );
 
-        // Create answer options
         scenario.options.forEach((option) => {
           const div = document.createElement("div");
           div.className = "choice-option";
@@ -2118,22 +1779,19 @@
 
         updateVitalUI();
 
-        // Show UI (VR or Desktop)
         if (renderer.xr.isPresenting) {
           updateVRMenu(index);
 
-          // Position menu in front of camera
           const xrCam = renderer.xr.getCamera(camera);
           const camPos = new THREE.Vector3();
           const camDir = new THREE.Vector3();
           xrCam.getWorldPosition(camPos);
           xrCam.getWorldDirection(camDir);
-          camDir.y = 0; // Keep horizontal
+          camDir.y = 0;
           camDir.normalize();
 
-          // Place 1.5 meters in front, slightly up
           vrMenuGroup.position.copy(camPos).add(camDir.multiplyScalar(1.5));
-          vrMenuGroup.position.y = 1.6; // Eye level-ish
+          vrMenuGroup.position.y = 1.6;
           vrMenuGroup.lookAt(camPos.x, vrMenuGroup.position.y, camPos.z);
 
           vrMenuGroup.visible = true;
@@ -2142,29 +1800,23 @@
         }
       }
 
-      // Handle Answer Submission (Fixed Pulse Bounds)
       function handleAnswer(scenarioIndex, isCorrect, pulseChange) {
         const scenario = scenarios[scenarioIndex];
         choiceWindow.style.display = "none";
 
-        // Hide VR Menu
         if (vrMenuGroup) vrMenuGroup.visible = false;
 
-        // Apply IV penalty (faster pulse drop for 2 questions)
         if (gameState.ivPenaltyActive) {
-          pulseChange *= 1.5; // 50% faster pulse drop
+          pulseChange *= 1.5;
           gameState.penaltyQuestionCount++;
 
-          // Reset penalty after 2 questions
           if (gameState.penaltyQuestionCount >= 2) {
             gameState.ivPenaltyActive = false;
             gameState.penaltyQuestionCount = 0;
           }
         }
 
-        // Update Pulse with STRICT bounds (no <60 or >220)
         if (isCorrect) {
-          // Correct answer: decrease pulse but not below minimum
           vitals.pulse = Math.max(PULSE_MIN, vitals.pulse + pulseChange);
           vitals.consecutiveWrongAnswers = 0;
           feedbackTitle.textContent = "CORRECT";
@@ -2172,17 +1824,14 @@
           feedbackMessage.textContent = scenario.correctFeedback;
           feedbackPanel.className = "feedback-panel feedback-correct";
         } else {
-          // Wrong answer: increase pulse but not above maximum
           vitals.pulse = Math.min(PULSE_MAX, vitals.pulse + pulseChange);
           vitals.consecutiveWrongAnswers++;
 
-          // Special handling for critical scenarios
           if (scenario.critical && vitals.consecutiveWrongAnswers >= 2) {
             endSimulation(false);
             return;
           }
 
-          // Fatal error for final scenario
           if (scenario.final) {
             endSimulation(false);
             return;
@@ -2193,14 +1842,12 @@
           feedbackMessage.textContent = scenario.incorrectFeedback;
           feedbackPanel.className = "feedback-panel feedback-incorrect";
 
-          // Apply IV penalty if scenario 5 is wrong
           if (scenario.penalty === "ivPenalty") {
             gameState.ivPenaltyActive = true;
             gameState.penaltyQuestionCount = 0;
           }
         }
 
-        // Update UI and show feedback
         updateVitalUI();
 
         if (renderer.xr.isPresenting) {
@@ -2209,7 +1856,6 @@
             isCorrect ? scenario.correctFeedback : scenario.incorrectFeedback
           );
 
-          // Position feedback same as menu was
           if (vrMenuGroup) {
             vrFeedbackGroup.position.copy(vrMenuGroup.position);
             vrFeedbackGroup.rotation.copy(vrMenuGroup.rotation);
@@ -2219,28 +1865,22 @@
           feedbackPanel.style.display = "block";
         }
 
-        // Check for cardiac arrest (pulse at max/min bounds)
         if (vitals.pulse === PULSE_MAX || vitals.pulse === PULSE_MIN) {
           endSimulation(false);
         }
       }
 
-      // Update Vital Signs UI + Pulse Color (Fixed Display)
       function updateVitalUI() {
-        // Ensure pulse is an integer (no decimals) and within bounds
         const displayPulse = Math.round(vitals.pulse);
 
-        // Update values
         pulseValueUI.textContent = displayPulse;
         condPulseUI.textContent = displayPulse;
         condBpUI.textContent = `${vitals.bpSystolic}/${vitals.bpDiastolic}`;
         condRespUI.textContent = vitals.respirations;
 
-        // Update pulse animation speed
         const animationSpeed = 60 / displayPulse;
         pulseValueUI.style.animationDuration = `${animationSpeed}s`;
 
-        // Update pulse color (Green/Yellow/Red based on BPM ranges)
         pulseValueUI.classList.remove(
           "pulse-green",
           "pulse-yellow",
@@ -2249,34 +1889,32 @@
         let currentColorClass = "";
         let colorHex = "#00ff9d";
         if (displayPulse >= 100 && displayPulse <= 120) {
-          currentColorClass = "pulse-green"; // Stable
+          currentColorClass = "pulse-green";
           colorHex = "#00ff9d";
           pulseValueUI.classList.add(currentColorClass);
         } else if (
           (displayPulse > 120 && displayPulse <= 140) ||
           (displayPulse < 100 && displayPulse >= 80)
         ) {
-          currentColorClass = "pulse-yellow"; // Instability
+          currentColorClass = "pulse-yellow";
           colorHex = "#ffff00";
           pulseValueUI.classList.add(currentColorClass);
         } else {
-          currentColorClass = "pulse-red"; // Critical (<80 or >140)
+          currentColorClass = "pulse-red";
           colorHex = "#ff4444";
           pulseValueUI.classList.add(currentColorClass);
         }
 
-        // Update VR Pulse
         updateVRPulse(displayPulse, colorHex);
+
         if (vrPulseGroup && renderer.xr.isPresenting)
           vrPulseGroup.visible = true;
 
-        // Update beat sound to match current color
         playBeatSoundByColor(currentColorClass);
 
         vitals.lastPulseChange = Date.now();
       }
 
-      // Gradual Vital Deterioration (Fixed Pulse Bounds)
       function updateVitals() {
         const now = Date.now();
         const interval = gameState.ivPenaltyActive
@@ -2284,11 +1922,9 @@
           : gameState.vitalDropInterval;
 
         if (now - gameState.lastVitalUpdate > interval) {
-          // Pulse increases (deteriorates) but stays within bounds
           const pulseDrop = gameState.ivPenaltyActive ? 5 : 3;
           vitals.pulse = Math.min(PULSE_MAX, vitals.pulse + pulseDrop);
 
-          // BP and respirations with bounds
           vitals.bpSystolic = Math.max(60, vitals.bpSystolic - 2);
           vitals.bpDiastolic = Math.max(40, vitals.bpDiastolic - 1);
           vitals.respirations = Math.min(40, vitals.respirations + 1);
@@ -2296,7 +1932,6 @@
           updateVitalUI();
           console.log("Vitals worsened | Pulse:", vitals.pulse);
 
-          // Check for cardiac arrest (pulse at max/min)
           if (vitals.pulse === PULSE_MAX || vitals.pulse === PULSE_MIN) {
             endSimulation(false);
           }
@@ -2305,17 +1940,14 @@
         }
       }
 
-      // End Simulation (Success/Failure)
       function endSimulation(isSuccess) {
         choiceWindow.style.display = "none";
         feedbackPanel.style.display = "none";
 
-        // 游戏结束时停止所有音频
-        audioElements.background.pause(); // 停止背景音
+        audioElements.background.pause();
         stopAllBeatSounds();
 
         if (!isSuccess) {
-          // 失败时播放 flatline 音
           audioElements.flatline.play().catch((err) => {
             console.log("Flatline audio play failed:", err);
           });
@@ -2328,7 +1960,6 @@
 
           updateVREnd(isSuccess, msg);
 
-          // Position in front
           const xrCam = renderer.xr.getCamera(camera);
           const camPos = new THREE.Vector3();
           const camDir = new THREE.Vector3();
@@ -2343,13 +1974,11 @@
 
           vrEndGroup.visible = true;
 
-          // Hide other UIs
           if (vrPulseGroup) vrPulseGroup.visible = false;
           if (vrMenuGroup) vrMenuGroup.visible = false;
           if (vrFeedbackGroup) vrFeedbackGroup.visible = false;
         }
 
-        // Create end screen overlay matching PDF requirements (Always create for desktop fallback)
         const endScreen = document.createElement("div");
         endScreen.style.position = "fixed";
         endScreen.style.top = "0";
@@ -2372,12 +2001,9 @@
           ? "none"
           : "fadeToBlack 2s forwards";
 
-        // Success/Failure Styling
         if (isSuccess) {
-          // Success: Scene freezes, alarms soften
           endScreen.style.background = "rgba(0, 0, 0, 0.7)";
         } else {
-          // Failure: Fade to black, flatline tone implied
           endScreen.style.background = "black";
         }
 
@@ -2396,6 +2022,7 @@
           : "Delayed or incorrect decisions resulted in patient death.";
 
         const restartButton = document.createElement("button");
+
         restartButton.style.marginTop = "2rem";
         restartButton.style.padding = "1rem 3rem";
         restartButton.style.fontSize = "1.2rem";
@@ -2406,8 +2033,8 @@
         restartButton.style.borderRadius = "5px";
         restartButton.style.cursor = "pointer";
         restartButton.textContent = "Play Again";
+
         restartButton.addEventListener("click", () => {
-          // Stop flatline sound before reloading
           audioElements.flatline.pause();
           location.reload();
         });
@@ -2415,33 +2042,28 @@
         endScreen.appendChild(endTitle);
         endScreen.appendChild(endMessage);
         endScreen.appendChild(restartButton);
-        document.getElementById("xr-ui-container").appendChild(endScreen);
+        document.body.appendChild(endScreen);
       }
 
-      // Fade to black animation for failure
       const style = document.createElement("style");
       style.textContent = `
       @keyframes fadeToBlack {
         from { background: rgba(0, 0, 0, 0.5); }
         to { background: #000; }
-      }
-    `;
+      }`;
+
       document.head.appendChild(style);
 
       function onWindowResize() {
         camera.aspect = window.innerWidth / window.innerHeight;
         camera.updateProjectionMatrix();
         renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(window.devicePixelRatio);
       }
 
-      function renderLoop(timestamp, frame) {
-        if (renderer.xr.isPresenting) {
-          updateTeleportFromThumbstick();
-        }
-        // Recenter once when entering VR (helps you face the patient)
+      function renderLoop() {
         if (pendingRecenter && renderer.xr.isPresenting && patientModel) {
-          // Try until it succeeds (first frame or two can be missing pose in emulators)
-          if (recenterXRToFacePatient(frame)) pendingRecenter = false;
+          if (recenterXRToFacePatient()) pendingRecenter = false;
         }
 
         if (!renderer.xr.isPresenting) {
@@ -2450,14 +2072,15 @@
 
         emergencyLights.intensity = 0.3 + Math.sin(Date.now() * 0.001) * 0.1;
 
-        // Keep vitals + hover logic identical to UnderPressure
         updateVitals();
         checkPatientHover();
 
-        // VR laser feedback (only before the first interaction)
         if (renderer.xr.isPresenting && !gameState.firstQuestionTriggered) {
           if (controller1) updateLaserAndTryHit(controller1);
           if (controller2) updateLaserAndTryHit(controller2);
+        }
+        if (renderer.xr.isPresenting) {
+          placePulseHUD();
         }
 
         renderer.render(scene, camera);
